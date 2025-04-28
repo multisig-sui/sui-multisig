@@ -1,0 +1,16 @@
+# Transaction files
+transactions/
+tx_*.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

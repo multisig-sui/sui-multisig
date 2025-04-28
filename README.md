@@ -31,10 +31,44 @@ Creates a deployment payload to publish a smart contract to the IOTA network
 ### 1. Create transaction
 
 ```bash
-bash ./scripts/1_create_tx.sh
+bash ./scripts/1_create_tx.sh [options]
 ```
-Creates a multisig transaction based on either the deployment/upgrade payload or a smart contract interaction.
-The script will either prompt you to select to use payload or smart contract. Or you can call the script with the `--payload <location of payload .json file>` flag.
+
+Creates a multisig transaction. The script supports four types of transactions:
+
+1. **Publish** - Deploy a new smart contract
+   ```bash
+   bash ./scripts/1_create_tx.sh -t publish -d <package_directory>
+   ```
+   Example:
+   ```bash
+   bash ./scripts/1_create_tx.sh -t publish -d ./my-contract
+   ```
+
+2. **Upgrade** - Upgrade an existing smart contract
+   ```bash
+   bash ./scripts/1_create_tx.sh -t upgrade
+   ```
+
+3. **Call** - Call a function on a smart contract
+   ```bash
+   bash ./scripts/1_create_tx.sh -t call -p <package_address> -m <module_name> -f <function_name> [-a <args>]
+   ```
+   Example:
+   ```bash
+   bash ./scripts/1_create_tx.sh -t call -p 0x123... -m counter -f create
+   ```
+
+4. **Transfer** - Transfer an object to another account
+   ```bash
+   bash ./scripts/1_create_tx.sh -t transfer -r <recipient_address> -o <object_id>
+   ```
+   Example:
+   ```bash
+   bash ./scripts/1_create_tx.sh -t transfer -r 0x456... -o 0x789...
+   ```
+
+If no type is specified, the script will prompt you to select one interactively.
 
 ### 2. Approve transaction
 
