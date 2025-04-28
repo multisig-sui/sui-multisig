@@ -21,12 +21,18 @@ Before you start you must initialze some accounts and a multisig.
 
 ## Scripts
 
-### 0. Create deployment or upgrade payload
+### 0. Setup Multisig Wallet
 
 ```bash
-bash ./scripts/0_create_deployment_payload.sh
+bash ./scripts/0_setup_multisig.sh
 ```
-Creates a deployment payload to publish a smart contract to the IOTA network
+
+Sets up a multisig wallet with multiple signers. The script will guide you through:
+- Adding public keys of all signers
+- Setting weights for each key
+- Setting the threshold for transaction approval
+
+The configuration is saved to a JSON file in the `transactions` directory for future reference.
 
 ### 1. Create transaction
 
@@ -78,7 +84,7 @@ bash ./scripts/2_approve_tx.sh
 
 Call this script with the `-- sequence-number <n>` flag to approve/reject a specific transaction. Otherwise it will print an overview of transactions and prompt you to input the sequence number of the one to approve/reject.
 
-### 2. Execute transaction
+### 3. Execute transaction
 
 ```bash
 bash ./scripts/3_execute_tx.sh
@@ -86,10 +92,9 @@ bash ./scripts/3_execute_tx.sh
 
 Executes the next transaction in the multisig queue, given that is has sufficient approvals.
 
-
 ## Learn more
 
-To learn more about how multisigs work on IOTA check out there resources:
+To learn more about how multisigs work on IOTA check out these resources:
 - [IOTA Developer docs](https://docs.iota.org/developer/cryptography/transaction-auth/multisig)
 
 ## TODO
