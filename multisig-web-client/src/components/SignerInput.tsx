@@ -1,5 +1,4 @@
 import { Box, Button, Flex, Text, TextField } from "@radix-ui/themes";
-import { Cross1Icon } from '@radix-ui/react-icons';
 
 interface SignerInputProps {
   index: number;
@@ -40,7 +39,6 @@ export function SignerInput({
         />
       </Box>
       <Button color="red" variant="soft" onClick={() => onRemove(index)} style={{ alignSelf: 'end' }}>
-        <Cross1Icon />
         Remove
       </Button>
     </Flex>

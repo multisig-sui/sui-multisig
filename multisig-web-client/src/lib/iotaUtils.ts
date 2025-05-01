@@ -4,6 +4,8 @@ import { Secp256r1PublicKey } from '@iota/iota-sdk/keypairs/secp256r1';
 import { PublicKey } from '@iota/iota-sdk/cryptography'; // Base type might be here
 import { MultiSigPublicKey } from '@iota/iota-sdk/multisig';
 import { fromB64 } from '@iota/iota-sdk/utils';
+import { IotaClient } from '@iota/iota-sdk/client'; // Try importing from client
+import { Transaction, TransactionArgument } from '@iota/iota-sdk/transactions'; // Try importing from transactions
 
 // Signature Scheme Flags
 const ED25519_FLAG = 0;
@@ -100,3 +102,44 @@ export function createMultisigAddress(
 // } catch (e) {
 //   console.error('Multisig generation failed:', e);
 // } 
+
+export async function prepareCallTransactionBytes(
+    client: IotaClient,
+    senderAddress: string, 
+    packageId: string,
+    moduleName: string,
+    functionName: string,
+    functionArgs: TransactionArgument[],
+    gasBudgetInput: number | string // Renamed for clarity
+): Promise<string> {
+    try {
+        const tx = new Transaction();
+
+        tx.moveCall({
+            package: packageId,
+            module: moduleName,
+            function: functionName,
+            arguments: functionArgs,
+        });
+
+        tx.setSender(senderAddress);
+        
+        // Ensure gas budget is a number/bigint
+        const gasBudget = typeof gasBudgetInput === 'string' ? BigInt(gasBudgetInput) : gasBudgetInput;
+        tx.setGasBudget(gasBudget);
+        
+        console.warn("Gas payment object selection is not implemented...");
+
+        // Build the transaction data for signing without a signer
+        const unsignedTxBytes = await tx.build({ client }); // Pass client in an object
+
+        // Convert Uint8Array to base64 string using Buffer
+        // Ensure Buffer is available (Vite usually polyfills it)
+        const base64String = Buffer.from(unsignedTxBytes).toString('base64');
+        return base64String;
+
+    } catch (error) {
+        console.error("Error preparing call transaction bytes:", error);
+        throw new Error(`Failed to prepare call transaction: ${error instanceof Error ? error.message : error}`);
+    }
+} 

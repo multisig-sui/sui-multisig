@@ -10,10 +10,12 @@ interface DashboardProps {
 
 export function Dashboard({ onNavigate }: DashboardProps) { 
   const handleCreateMultisig = () => {
+    console.log("[Dashboard] handleCreateMultisig called. Navigating to createMultisig...");
     onNavigate('createMultisig'); 
   };
 
   const handleCreateTransaction = () => {
+    console.log("[Dashboard] handleCreateTransaction called. Navigating to createTransaction...");
     onNavigate('createTransaction'); 
   };
 
