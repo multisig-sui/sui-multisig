@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Button, Card, Flex, Heading, Text, TextField, Separator } from "@radix-ui/themes";
 import { PlusIcon } from '@radix-ui/react-icons';
 import { SignerInput } from '../../components/SignerInput';
+import { createMultisigAddress } from '../../lib/iotaUtils';
 
 interface Signer {
   id: number; // For React key prop
@@ -63,25 +64,23 @@ export function MultisigSetupForm() {
         return;
     }
 
-    // TODO: Replace with actual SDK call from lib/iotaUtils.ts
-    console.log("Creating multisig with:");
-    console.log("Signers:", signers.map(s => ({ pk: s.publicKey, weight: s.weight })));
+    console.log("Attempting to create multisig with:");
+    const pks = signers.map(s => s.publicKey);
+    const weights = signers.map(s => s.weight);
+    console.log("Signer PKs:", pks);
+    console.log("Weights:", weights);
     console.log("Threshold:", threshold);
 
     try {
-      // --- Placeholder for SDK call --- 
-      // const address = await createMultisigAddress(signers.map(s => s.publicKey), signers.map(s => s.weight), threshold);
-      // setMultisigAddress(address);
-      // --- End Placeholder ---
-      
-      // Simulate success for now
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-      setMultisigAddress(`mock-multisig-addr-${Date.now()}`); // Display mock address
-      setError('Multisig address generation logic not yet implemented.'); // Temporary notice
+      // Call the actual SDK utility function
+      const address = createMultisigAddress(pks, weights, threshold);
+      setMultisigAddress(address); // Set the real address
+      setError(null); // Clear any previous errors
 
     } catch (err) {
       console.error("Error creating multisig address:", err);
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      setMultisigAddress(null); // Clear address on error
     }
   };
 
@@ -130,7 +129,7 @@ export function MultisigSetupForm() {
                 <Text color="red">Error: {error}</Text>
             )}
             {multisigAddress && (
-                <Text color="green">Generated Mock Address: {multisigAddress}</Text>
+                <Text color="green">Generated Multisig Address: {multisigAddress}</Text>
             )}
             <Button type="submit">Create Multisig Address</Button>
         </Flex>
