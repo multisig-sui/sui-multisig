@@ -18,7 +18,7 @@ const SECP256R1_FLAG = 2;
  * @returns The corresponding PublicKey object.
  * @throws Error if the flag is invalid or decoding fails.
  */
-function publicKeyFromBase64WithFlag(publicKeyWithFlag: string): PublicKey {
+export function publicKeyFromBase64WithFlag(publicKeyWithFlag: string): PublicKey {
     try {
         const bytesWithFlag = fromB64(publicKeyWithFlag);
         if (bytesWithFlag.length < 1) {
@@ -141,5 +141,84 @@ export async function prepareCallTransactionBytes(
     } catch (error) {
         console.error("Error preparing call transaction bytes:", error);
         throw new Error(`Failed to prepare call transaction: ${error instanceof Error ? error.message : error}`);
+    }
+} 
+
+/**
+ * Prepares the unsigned transaction bytes for a simple base IOTA token transfer.
+ * This version explicitly fetches the sender's coins and sets them for gas payment.
+ *
+ * @param client - The IotaClient instance.
+ * @param senderAddress - The IOTA address of the multisig sender.
+ * @param recipientAddress - The IOTA address of the recipient.
+ * @param amount - The amount of base IOTA tokens (Miotas) to transfer (as a string or number).
+ * @param gasBudgetInput - A suggested gas budget.
+ * @returns A promise resolving to the Base64 encoded unsigned transaction essence bytes.
+ */
+export async function prepareTransferTransactionBytes(
+    client: IotaClient,
+    senderAddress: string, 
+    recipientAddress: string,
+    amount: string | number, 
+    gasBudgetInput: number | string
+): Promise<string> {
+    try {
+        console.log(`Preparing transfer: ${amount} base tokens to ${recipientAddress} from ${senderAddress}`);
+        
+        const tx = new Transaction();
+
+        // Set the sender (multisig address)
+        tx.setSender(senderAddress);
+
+        // --- Gas Configuration ---
+        // Fetch the sender's coins
+        console.log(`Fetching coins for sender: ${senderAddress}...`);
+        const gasCoinsResult = await client.getCoins({ owner: senderAddress });
+        console.log(`Found ${gasCoinsResult.data.length} coins for sender.`);
+
+        if (gasCoinsResult.data.length === 0) {
+            throw new Error('Sender has no IOTA coins for gas payment. Please use the faucet.');
+        }
+        
+        // Map CoinObject to ObjectRef format { objectId, version, digest }
+        const gasPaymentObjects = gasCoinsResult.data.map(coin => ({
+            objectId: coin.coinObjectId,
+            version: coin.version,
+            digest: coin.digest
+        }));
+        
+        // Set the gas payment objects. The builder will select the necessary ones.
+        tx.setGasPayment(gasPaymentObjects);
+        
+        const gasBudget = typeof gasBudgetInput === 'string' ? BigInt(gasBudgetInput) : gasBudgetInput;
+        tx.setGasBudget(gasBudget);
+        // tx.setGasPrice(...) // Optional: Can be set if needed
+        // ----------------------
+
+        // --- Transfer Logic ---
+        // Instead of splitting from tx.gas, we need to create the payment coin
+        // The SDK will handle using the gas payment objects to fund this.
+        const amountToSend = BigInt(amount); 
+        const transferCoin = tx.splitCoins(tx.gas, [amountToSend])[0]; // This *should* now work as tx.gas refers to the coin(s) selected from gasPaymentObjects
+        // OR alternatively, maybe makeTransferIotaTxn? Let's try splitCoins first as it's simpler.
+
+        // Transfer the split coin to the recipient
+        tx.transferObjects([transferCoin], recipientAddress);
+        // --------------------
+        
+        console.log("Transaction commands prepared:", tx.getData().commands);
+
+        // Build the transaction essence bytes, providing the client for context (e.g., reference gas price)
+        const unsignedTxBytes = await tx.build({ client }); 
+
+        // Convert Uint8Array to base64 string
+        const base64String = Buffer.from(unsignedTxBytes).toString('base64');
+        
+        console.log("Unsigned Tx Base64:", base64String);
+        return base64String;
+
+    } catch (error) {
+        console.error("Error preparing transfer transaction bytes:", error);
+        throw new Error(`Failed to prepare transfer transaction: ${error instanceof Error ? error.message : error}`);
     }
 } 

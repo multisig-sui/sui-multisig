@@ -1,4 +1,8 @@
 // Define shared application types here
 
-// Define possible views for navigation
-export type AppView = 'dashboard' | 'createMultisig' | 'createTransaction'; // Add more as needed 
+// Define the possible views/pages in the application
+export type AppView = 
+    | 'dashboard' 
+    | 'createMultisig' 
+    | 'createTransaction'
+    | 'manageMultisig'; // Add the new view 
