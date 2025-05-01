@@ -14,3 +14,16 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Node / Build
+node_modules/
+.pnpm-store/
+/multisig-web-client/node_modules/
+/multisig-web-client/dist/
+/multisig-web-client/.vite/
+/multisig-web-client/coverage/
+
+# Environment variables
+.env
+.env.*
+!*.env.example
