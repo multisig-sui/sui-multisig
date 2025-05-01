@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Button, Card, Flex, Heading, Text, TextField, Separator, Callout } from "@radix-ui/themes";
-import { CheckCircledIcon } from '@radix-ui/react-icons';
+// import { CheckCircledIcon } from '@radix-ui/react-icons'; // Removed unused import
 import { SignerInput } from '../../components/SignerInput';
 import { createMultisigAddress } from '../../lib/iotaUtils';
 
@@ -129,9 +129,9 @@ export function MultisigSetupForm({ onComplete }: MultisigSetupFormProps) {
       <Heading mb="4">Create New Multisig Wallet</Heading>
       {generatedConfig && (
          <Callout.Root color="green" size="2" mb="4">
-            <Callout.Icon>
-                <CheckCircledIcon />
-            </Callout.Icon>
+            {/* <Callout.Icon>
+                <CheckCircledIcon /> 
+            </Callout.Icon> */}
             <Callout.Text>
                 Multisig Address Generated Successfully! Address: {generatedConfig.multisig_address}
             </Callout.Text>

@@ -23,7 +23,7 @@ export function SignerInput({
         <Text size="2" mb="1" as="label" htmlFor={`signer-pk-${index}`}>Signer {index + 1} Public Key</Text>
         <TextField.Root 
           id={`signer-pk-${index}`}
-          placeholder="Enter Base64 Public Key (with flag)" 
+          placeholder="Use publicBase64KeyWithFlag from keytool"
           value={publicKey}
           onChange={(e) => onPublicKeyChange(index, e.target.value)}
         />
