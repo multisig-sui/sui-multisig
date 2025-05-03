@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, Card, Heading, Text, Flex, Separator, Button } from '@radix-ui/themes';
 import { MultisigConfig } from '../multisig-setup/MultisigSetupForm'; // Get config type
 import { AppView } from '../../types'; // Get AppView for navigation

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ConnectButton, useCurrentAccount } from "@iota/dapp-kit";
 import { Box, Container, Flex, Heading, Separator, Button } from "@radix-ui/themes";
 import { WalletInfo } from "./components/WalletInfo";

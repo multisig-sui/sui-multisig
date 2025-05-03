@@ -1,6 +1,6 @@
 import { useCurrentAccount } from "@iota/dapp-kit";
 import { Container, Flex, Heading, Text, Button, Callout, Box } from "@radix-ui/themes";
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { getFaucetHost, requestIotaFromFaucetV0 } from '@iota/iota-sdk/faucet';
 import { toB64 } from '@iota/iota-sdk/utils';
 
