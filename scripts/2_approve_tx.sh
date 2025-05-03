@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Source the helper script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/util/transaction_helpers.sh"
+
 # Check if transactions directory exists
 if [ ! -d "transactions" ]; then
     echo "Error: No transactions directory found"
@@ -43,6 +47,18 @@ TX_BYTES=$(cat "$TX_BYTES_FILE")
 if [ -z "$TX_BYTES" ]; then
     echo "Error: No transaction bytes found"
     exit 1
+fi
+
+# Decode and display transaction info
+if ! decode_and_display_tx "$TX_BYTES"; then
+    exit 1
+fi
+
+# Confirm transaction
+read -p "Do you want to approve this transaction? (y/N): " APPROVE
+if [[ ! "$APPROVE" =~ ^[Yy]$ ]]; then
+    echo "Transaction approval cancelled."
+    exit 0
 fi
 
 # Get addresses from iota client

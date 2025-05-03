@@ -151,3 +151,38 @@ select_address() {
     echo "$SELECTED_INFO"
     return 0
 }
+
+# Function to decode and display transaction details
+decode_and_display_tx() {
+    local tx_bytes="$1"
+
+    echo -e "\n📄 Transaction Details:"
+    echo "------------------------"
+    local tx_info
+    tx_info=$(iota keytool decode-or-verify-tx --tx-bytes "$tx_bytes" --json)
+    if [ $? -ne 0 ]; then
+        echo "❌ Error: Failed to decode transaction"
+        return 1
+    fi
+
+    # Extract and display relevant transaction info
+    echo "$tx_info" | jq -r '
+        .tx.V1 |
+        "Type: \(.kind | keys[0])",
+        "Sender: \(.sender)",
+        "Gas Budget: \(.gas_data.budget)",
+        if .kind.ProgrammableTransaction then
+            "Commands:",
+            (.kind.ProgrammableTransaction.commands[] |
+                if .MoveCall then
+                    "  • Call \(.MoveCall.package):\(.MoveCall.module)::\(.MoveCall.function)()"
+                else
+                    "  • \(. | keys[0])"
+                end)
+        else
+            "Commands: None"
+        end
+    '
+    echo "------------------------"
+    return 0
+}

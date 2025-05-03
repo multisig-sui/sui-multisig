@@ -209,7 +209,6 @@ fi
 
 # Build the IOTA CLI command
 CMD="iota client call --package $PACKAGE_ADDRESS --module $MODULE_NAME --function $FUNCTION_NAME --serialize-unsigned-transaction"
-
 # Add arguments if any
 if [ ${#ARGS[@]} -gt 0 ]; then
     CMD="$CMD --args"
