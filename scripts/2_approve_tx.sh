@@ -65,23 +65,27 @@ fi
 ADDRESSES_JSON=$(iota client addresses --json)
 ACTIVE_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r '.activeAddress')
 
-# Show available addresses
-echo "Available addresses:"
-echo "------------------"
-echo "$ADDRESSES_JSON" | jq -r '.addresses[] | "\(.[0]): \(.[1])"'
-echo "------------------"
-echo "Active address: $ACTIVE_ADDRESS"
-
-# Show existing signatures if any
+# Create signatures directory if it doesn't exist
 SIGS_DIR="$TX_DIR/signatures"
-if [ -d "$SIGS_DIR" ] && [ "$(ls -A "$SIGS_DIR" 2>/dev/null)" ]; then
-    echo -e "\nExisting signatures:"
-    echo "------------------"
-    for sig_file in "$SIGS_DIR"/*; do
-        echo "✓ 0x$(basename "$sig_file")"
-    done
-    echo "------------------"
-fi
+mkdir -p "$SIGS_DIR"
+
+# Show available addresses with signature status
+echo -e "\n📋 Available addresses:"
+echo "------------------------"
+while IFS= read -r line; do
+    NAME=$(echo "$line" | cut -d'|' -f1)
+    ADDR=$(echo "$line" | cut -d'|' -f2)
+    STATUS=""
+    if [ -f "$SIGS_DIR/${ADDR#0x}" ]; then
+        STATUS=" (✓ already signed)"
+    fi
+    if [ "$ADDR" = "$ACTIVE_ADDRESS" ]; then
+        echo "* $NAME: $ADDR$STATUS (active)"
+    else
+        echo "  $NAME: $ADDR$STATUS"
+    fi
+done < <(echo "$ADDRESSES_JSON" | jq -r '.addresses[] | "\(.[0])|\(.[1])"')
+echo "------------------------"
 
 # Prompt for address selection
 read -p "Enter address name to use (or press enter for active address): " ADDR_NAME
@@ -116,9 +120,6 @@ if [ $? -ne 0 ]; then
     echo "Error: Failed to sign transaction"
     exit 1
 fi
-
-# Create signatures directory if it doesn't exist
-mkdir -p "$SIGS_DIR"
 
 # Store the signature response in a file named after the signer's address
 echo "$SIGNATURE_RESPONSE" > "$SIGS_DIR/${SIGNER_ADDRESS#0x}"

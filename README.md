@@ -100,6 +100,9 @@ To learn more about how multisigs work on IOTA check out these resources:
 ## TODO
 ### Essential
 - Cannot execute tx as multisig. I think it might be error in script 1, the tx is created with main account as sender, not multisig
+  - Select multisig address as sender in step 1 for creating transaction
+  - In step 2 user first picks a multisig, then display available transactions from this multisig.
+  - In step 2, only show addresses from this multisig as possible signers.
 - Script call fails when a function takes arguments
 ### Optional
 - Multisig management scripts (change number of signers etc.)
