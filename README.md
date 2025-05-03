@@ -98,7 +98,9 @@ To learn more about how multisigs work on IOTA check out these resources:
 - [IOTA Developer docs](https://docs.iota.org/developer/cryptography/transaction-auth/multisig)
 
 ## TODO
-- Include an example smart contract file to deploy/upgrade
-- Add scripts
-- Helper scripts to setup tests account
+### Essential
+- Cannot execute tx as multisig. I think it might be error in script 1, the tx is created with main account as sender, not multisig
+- Script call fails when a function takes arguments
+### Optional
+- Decode transaction
 - Multisig management scripts (change number of signers etc.)
