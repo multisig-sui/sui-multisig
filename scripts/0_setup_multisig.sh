@@ -5,6 +5,14 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/util/transaction_helpers.sh"
 
+# Create required directories
+echo "🔄 Setting up directories..."
+mkdir -p multisigs
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to create multisigs directory"
+    exit 1
+fi
+
 # Function to show usage
 show_usage() {
     echo "Usage: $0 [options]"
@@ -13,8 +21,8 @@ show_usage() {
     echo ""
     echo "This script will guide you through setting up a multisig wallet."
     echo "You'll need to provide:"
-    echo "1. Public keys of all signers"
-    echo "2. Weights for each key"
+    echo "1. Select which addresses to include"
+    echo "2. Weights for each address"
     echo "3. Threshold for transaction approval"
 }
 
@@ -46,17 +54,6 @@ while true; do
     esac
 done
 
-# Function to validate public key format
-validate_public_key() {
-    local key="$1"
-    # Basic validation - check if it's a valid base64 string
-    if ! echo "$key" | base64 -d &>/dev/null; then
-        echo "❌ Invalid public key format. Please enter a valid base64 encoded key."
-        return 1
-    fi
-    return 0
-}
-
 # Function to validate weight
 validate_weight() {
     local weight="$1"
@@ -85,39 +82,68 @@ validate_threshold() {
     return 0
 }
 
-# Initialize arrays for public keys and weights
-PUBLIC_KEYS=()
+# Get addresses from iota client
+ADDRESSES_JSON=$(iota client addresses --json)
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to get addresses"
+    exit 1
+fi
+
+# Extract addresses and names into arrays
+readarray -t ADDR_NAMES < <(echo "$ADDRESSES_JSON" | jq -r '.addresses[][0]')
+readarray -t ADDRESSES < <(echo "$ADDRESSES_JSON" | jq -r '.addresses[][1]')
+ACTIVE_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r '.activeAddress')
+
+if [ ${#ADDRESSES[@]} -eq 0 ]; then
+    echo "❌ No addresses found"
+    exit 1
+fi
+
+# Show available addresses
+echo "Available addresses:"
+echo "------------------"
+for i in "${!ADDRESSES[@]}"; do
+    echo "[$i] ${ADDR_NAMES[$i]}: ${ADDRESSES[$i]}"
+done
+echo "------------------"
+echo "Active address: $ACTIVE_ADDRESS"
+
+# Initialize arrays for selected addresses and weights
+SELECTED_NAMES=()
+SELECTED_ADDRESSES=()
 WEIGHTS=()
 
-# Get number of signers
+# Let user select addresses and assign weights
 while true; do
-    read -p "Enter number of signers: " NUM_SIGNERS
-    if [[ "$NUM_SIGNERS" =~ ^[1-9][0-9]*$ ]]; then
-        break
-    else
-        echo "❌ Please enter a positive integer"
-    fi
-done
+    echo -e "\nSelect addresses to include in multisig (or press enter when done):"
+    read -p "Enter address number: " selection
 
-# Collect public keys and weights
-for ((i=1; i<=NUM_SIGNERS; i++)); do
-    echo ""
-    echo "Signer $i:"
-
-    # Get public key
-    while true; do
-        read -p "Enter public key (base64): " PUBLIC_KEY
-        if validate_public_key "$PUBLIC_KEY"; then
-            PUBLIC_KEYS+=("$PUBLIC_KEY")
-            break
+    if [ -z "$selection" ]; then
+        if [ ${#SELECTED_ADDRESSES[@]} -eq 0 ]; then
+            echo "❌ Please select at least one address"
+            continue
         fi
-    done
+        break
+    fi
 
-    # Get weight
+    if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -ge "${#ADDRESSES[@]}" ]; then
+        echo "❌ Invalid selection"
+        continue
+    fi
+
+    # Check if address already selected
+    if [[ " ${SELECTED_ADDRESSES[@]} " =~ " ${ADDRESSES[$selection]} " ]]; then
+        echo "❌ This address is already selected"
+        continue
+    fi
+
+    # Get weight for this address
     while true; do
-        read -p "Enter weight for this key: " WEIGHT
-        if validate_weight "$WEIGHT"; then
-            WEIGHTS+=("$WEIGHT")
+        read -p "Enter weight for ${ADDR_NAMES[$selection]}: " weight
+        if validate_weight "$weight"; then
+            SELECTED_NAMES+=("${ADDR_NAMES[$selection]}")
+            SELECTED_ADDRESSES+=("${ADDRESSES[$selection]}")
+            WEIGHTS+=("$weight")
             break
         fi
     done
@@ -131,60 +157,70 @@ done
 
 # Get threshold
 while true; do
-    echo ""
-    echo "Total weight: $TOTAL_WEIGHT"
+    echo -e "\nTotal weight: $TOTAL_WEIGHT"
     read -p "Enter threshold (must be <= total weight): " THRESHOLD
     if validate_threshold "$THRESHOLD" "$TOTAL_WEIGHT"; then
         break
     fi
 done
 
+# Get public keys for selected addresses
+echo -e "\n🔄 Getting public keys for selected addresses..."
+KEYS_JSON=$(iota keytool list --json)
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to get public keys"
+    exit 1
+fi
+
+declare -A PUB_KEYS
+for addr in "${SELECTED_ADDRESSES[@]}"; do
+    PUB_KEY=$(echo "$KEYS_JSON" | jq -r --arg addr "$addr" '.[] | select(.iotaAddress == $addr) | .publicBase64KeyWithFlag')
+    if [ -z "$PUB_KEY" ]; then
+        echo "❌ Failed to get public key for address: $addr"
+        exit 1
+    fi
+    PUB_KEYS["$addr"]="$PUB_KEY"
+done
+
 # Build the command
 CMD="iota keytool multi-sig-address --threshold $THRESHOLD"
 
-# Add public keys
-for key in "${PUBLIC_KEYS[@]}"; do
-    CMD="$CMD --pks $key"
+# Add public keys and weights
+for addr in "${SELECTED_ADDRESSES[@]}"; do
+    CMD="$CMD --pks ${PUB_KEYS[$addr]}"
 done
 
-# Add weights
 for weight in "${WEIGHTS[@]}"; do
     CMD="$CMD --weights $weight"
 done
 
+# Add JSON flag
+CMD="$CMD --json"
+
 # Execute the command
-echo ""
-echo "🔄 Generating multisig address..."
-MULTISIG_ADDRESS=$(execute_command "$CMD" "Failed to generate multisig address")
+echo -e "\n🔄 Generating multisig address..."
+MULTISIG_RESPONSE=$(eval "$CMD")
 if [ $? -ne 0 ]; then
+    echo "❌ Failed to generate multisig address"
+    echo "$MULTISIG_RESPONSE"
     exit 1
 fi
 
-# Save the configuration
-CONFIG_FILE="transactions/multisig_config_$(date +%Y%m%d_%H%M%S).json"
-cat > "$CONFIG_FILE" << EOF
-{
-    "multisig_address": "$MULTISIG_ADDRESS",
-    "threshold": $THRESHOLD,
-    "signers": [
-EOF
+# Extract multisig address for the filename
+MULTISIG_ADDRESS=$(echo "$MULTISIG_RESPONSE" | jq -r '.multisigAddress')
+if [ -z "$MULTISIG_ADDRESS" ] || [ "$MULTISIG_ADDRESS" = "null" ]; then
+    echo "❌ Failed to extract multisig address from response"
+    exit 1
+fi
 
-for ((i=0; i<NUM_SIGNERS; i++)); do
-    cat >> "$CONFIG_FILE" << EOF
-        {
-            "public_key": "${PUBLIC_KEYS[$i]}",
-            "weight": ${WEIGHTS[$i]}
-        }$( [ $i -lt $((NUM_SIGNERS-1)) ] && echo "," )
-EOF
-done
+# Create multisigs directory if it doesn't exist
+mkdir -p multisigs
 
-cat >> "$CONFIG_FILE" << EOF
-    ]
-}
-EOF
+# Save the configuration using the multisig address as filename
+CONFIG_FILE="multisigs/${MULTISIG_ADDRESS#0x}.json"
+echo "$MULTISIG_RESPONSE" > "$CONFIG_FILE"
 
-echo ""
-echo "✅ Multisig setup complete!"
+echo -e "\n✅ Multisig setup complete!"
 echo "📦 Multisig address: $MULTISIG_ADDRESS"
 echo "🔑 Configuration saved to: $CONFIG_FILE"
 echo ""

@@ -9,8 +9,6 @@ execute_command() {
     local cmd="$1"
     local error_msg="$2"
 
-    echo "🔐 Generating transaction data..."
-    echo "Executing: $cmd"
     local result
     result=$(eval "$cmd")
 
@@ -33,14 +31,18 @@ save_transaction_data() {
     # Create transactions directory if it doesn't exist
     mkdir -p transactions
 
-    # Create filename with timestamp and optional additional info
+    # Create timestamp
     local timestamp
     timestamp=$(date +%Y%m%d_%H%M%S)
-    local filename="transactions/tx_${transaction_type}_${additional_info}_${timestamp}.json"
 
-    # Save the transaction data
-    echo "$transaction_data" > "$filename"
-    echo "💾 Transaction data saved to: $filename"
+    # Create transaction directory
+    local tx_dir="transactions/tx_${transaction_type}_${additional_info}_${timestamp}"
+    mkdir -p "$tx_dir"
+
+    # Save the transaction bytes
+    echo "$transaction_data" > "$tx_dir/tx_bytes"
+
+    echo "💾 Transaction data saved to: $tx_dir/tx_bytes"
 }
 
 # Function to show next steps
@@ -89,5 +91,63 @@ return_to_original_dir() {
         echo "❌ Failed to change back to original directory"
         return 1
     fi
+    return 0
+}
+
+# Function to select an address
+# Returns: "<name>|<address>" or empty if cancelled
+select_address() {
+    local prompt_msg="${1:-Enter address name (or press enter for active address): }"
+
+    # Get addresses from iota client
+    local ADDRESSES_JSON
+    ADDRESSES_JSON=$(iota client addresses --json)
+    if [ $? -ne 0 ]; then
+        echo "❌ Failed to get addresses" >&2
+        return 1
+    fi
+
+    local ACTIVE_ADDRESS
+    ACTIVE_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r '.activeAddress')
+
+    # Show available addresses
+    echo -e "\n📋 Available addresses:"
+    echo "------------------------"
+    while IFS= read -r line; do
+        NAME=$(echo "$line" | cut -d'|' -f1)
+        ADDR=$(echo "$line" | cut -d'|' -f2)
+        if [ "$ADDR" = "$ACTIVE_ADDRESS" ]; then
+            echo "* $NAME: $ADDR (active)"
+        else
+            echo "  $NAME: $ADDR"
+        fi
+    done < <(echo "$ADDRESSES_JSON" | jq -r '.addresses[] | "\(.[0])|\(.[1])"')
+    echo "------------------------"
+
+    # Prompt for address selection
+    local ADDR_NAME
+    read -p "$prompt_msg" ADDR_NAME
+
+    # Get name of active address if no input
+    if [ -z "$ADDR_NAME" ]; then
+        local ACTIVE_NAME
+        ACTIVE_NAME=$(echo "$ADDRESSES_JSON" | jq -r --arg addr "$ACTIVE_ADDRESS" '.addresses[] | select(.[1] == $addr) | .[0]')
+        if [ -n "$ACTIVE_NAME" ]; then
+            echo "${ACTIVE_NAME}|${ACTIVE_ADDRESS}"
+            return 0
+        fi
+        echo "❌ Could not find active address name" >&2
+        return 1
+    fi
+
+    # Find address by name
+    local SELECTED_INFO
+    SELECTED_INFO=$(echo "$ADDRESSES_JSON" | jq -r --arg name "$ADDR_NAME" '.addresses[] | select(.[0] == $name) | "\(.[0])|\(.[1])"')
+    if [ -z "$SELECTED_INFO" ] || [ "$SELECTED_INFO" = "|" ]; then
+        echo "❌ Address name not found" >&2
+        return 1
+    fi
+
+    echo "$SELECTED_INFO"
     return 0
 }

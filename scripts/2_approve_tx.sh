@@ -1,53 +1,111 @@
 #!/bin/bash
 
-# Check if transactions directory exists and create if not
-mkdir -p transactions
-
-# Get the latest transaction file
-TX_FILE="transactions/latest_tx.json"
-if [ ! -f "$TX_FILE" ]; then
-    echo "Error: No pending transaction found"
+# Check if transactions directory exists
+if [ ! -d "transactions" ]; then
+    echo "Error: No transactions directory found"
     exit 1
 fi
 
-# Read transaction data
-TX_BYTES=$(jq -r '.tx_bytes' "$TX_FILE")
-if [ -z "$TX_BYTES" ] || [ "$TX_BYTES" == "null" ]; then
-    echo "Error: No tx_bytes found in transaction file"
+# List all transaction directories
+TX_DIRS=(transactions/tx_*)
+if [ ${#TX_DIRS[@]} -eq 0 ] || [ ! -d "${TX_DIRS[0]}" ]; then
+    echo "Error: No transactions found"
     exit 1
 fi
 
-# Show transaction details
-echo "Transaction details:"
-echo "------------------"
-jq . "$TX_FILE"
-echo "------------------"
+# Display available transactions
+echo "📋 Available transactions:"
+echo "------------------------"
+for i in "${!TX_DIRS[@]}"; do
+    echo "[$i] $(basename "${TX_DIRS[$i]}")"
+done
+echo "------------------------"
 
-# Ask for approval decision
-read -p "Do you want to approve this transaction? (y/n): " APPROVE
-if [[ ! "$APPROVE" =~ ^[Yy]$ ]]; then
-    echo "Transaction rejected"
-    exit 0
+# Prompt user to select a transaction
+while true; do
+    read -p "Select transaction number: " selection
+    if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -lt "${#TX_DIRS[@]}" ]; then
+        TX_DIR="${TX_DIRS[$selection]}"
+        break
+    else
+        echo "❌ Invalid selection. Please enter a number between 0 and $((${#TX_DIRS[@]}-1))"
+    fi
+done
+
+# Get the transaction bytes
+TX_BYTES_FILE="$TX_DIR/tx_bytes"
+if [ ! -f "$TX_BYTES_FILE" ]; then
+    echo "Error: Transaction bytes file not found: $TX_BYTES_FILE"
+    exit 1
+fi
+
+TX_BYTES=$(cat "$TX_BYTES_FILE")
+if [ -z "$TX_BYTES" ]; then
+    echo "Error: No transaction bytes found"
+    exit 1
+fi
+
+# Get addresses from iota client
+ADDRESSES_JSON=$(iota client addresses --json)
+ACTIVE_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r '.activeAddress')
+
+# Show available addresses
+echo "Available addresses:"
+echo "------------------"
+echo "$ADDRESSES_JSON" | jq -r '.addresses[] | "\(.[0]): \(.[1])"'
+echo "------------------"
+echo "Active address: $ACTIVE_ADDRESS"
+
+# Show existing signatures if any
+SIGS_DIR="$TX_DIR/signatures"
+if [ -d "$SIGS_DIR" ] && [ "$(ls -A "$SIGS_DIR" 2>/dev/null)" ]; then
+    echo -e "\nExisting signatures:"
+    echo "------------------"
+    for sig_file in "$SIGS_DIR"/*; do
+        echo "✓ 0x$(basename "$sig_file")"
+    done
+    echo "------------------"
+fi
+
+# Prompt for address selection
+read -p "Enter address name to use (or press enter for active address): " ADDR_NAME
+
+if [ -z "$ADDR_NAME" ]; then
+    SIGNER_ADDRESS="$ACTIVE_ADDRESS"
+else
+    # Find address by name
+    SIGNER_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r --arg name "$ADDR_NAME" '.addresses[] | select(.[0] == $name) | .[1]')
+    if [ -z "$SIGNER_ADDRESS" ] || [ "$SIGNER_ADDRESS" = "null" ]; then
+        echo "Error: Address name not found"
+        exit 1
+    fi
+fi
+
+# Check if signature already exists
+if [ -f "$SIGS_DIR/${SIGNER_ADDRESS#0x}" ]; then
+    echo "⚠️  This address has already signed this transaction"
+    read -p "Do you want to overwrite the existing signature? (y/N): " OVERWRITE
+    if [[ ! "$OVERWRITE" =~ ^[Yy]$ ]]; then
+        echo "Aborted."
+        exit 0
+    fi
 fi
 
 # Sign the transaction
-echo "Signing transaction..."
-SIGNATURE=$(iota keytool sign --data "$TX_BYTES" | grep "Serialized signature" | cut -d':' -f2 | tr -d ' ')
+echo "Signing with address: $SIGNER_ADDRESS"
 
-if [ -z "$SIGNATURE" ]; then
+# Execute signing and store full response
+SIGNATURE_RESPONSE=$(iota keytool sign --address "$SIGNER_ADDRESS" --data "$TX_BYTES" --json)
+if [ $? -ne 0 ]; then
     echo "Error: Failed to sign transaction"
     exit 1
 fi
 
-# Store the signature
-SIGS_FILE="transactions/latest_signatures.json"
-if [ ! -f "$SIGS_FILE" ]; then
-    echo '{"signatures":[]}' > "$SIGS_FILE"
-fi
+# Create signatures directory if it doesn't exist
+mkdir -p "$SIGS_DIR"
 
-# Add new signature to array
-echo "Storing signature..."
-jq --arg sig "$SIGNATURE" '.signatures += [$sig]' "$SIGS_FILE" > "${SIGS_FILE}.tmp" && mv "${SIGS_FILE}.tmp" "$SIGS_FILE"
+# Store the signature response in a file named after the signer's address
+echo "$SIGNATURE_RESPONSE" > "$SIGS_DIR/${SIGNER_ADDRESS#0x}"
 
-echo "Transaction successfully signed and signature stored"
-echo "You can now execute the transaction once enough signatures are collected"
+echo "✅ Transaction successfully signed"
+echo "📂 Transaction directory: $(basename "$TX_DIR")"

@@ -88,3 +88,20 @@ done
 # Execute the appropriate transaction type script with filtered arguments
 echo "🔄 Executing $TRANSACTION_TYPE transaction..."
 "$SCRIPT_DIR/types/$TRANSACTION_TYPE.sh" "${FILTERED_ARGS[@]}"
+
+# Function to save transaction data
+save_transaction_data() {
+    local tx_data="$1"
+    local tx_type="$2"
+    local tx_name="$3"
+    local timestamp=$(date +%Y%m%d_%H%M%S)
+
+    # Create directory name
+    local tx_dir="transactions/tx_${tx_type}_${tx_name}_${timestamp}"
+    mkdir -p "$tx_dir"
+
+    # Save transaction bytes
+    echo "$tx_data" > "$tx_dir/tx_bytes"
+
+    echo "💾 Transaction data saved to: $tx_dir/tx_bytes"
+}
