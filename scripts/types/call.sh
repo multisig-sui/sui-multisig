@@ -76,15 +76,17 @@ prompt_package_address() {
     done
 }
 
-# Function to select module
-select_module() {
-    # Fetch the package object
+# Function to fetch package object
+fetch_package_object() {
     echo "🔄 Fetching package object for address: $PACKAGE_ADDRESS"
-    PACKAGE_OBJECT=$(execute_command "iota client object \"$PACKAGE_ADDRESS\" --json" "Failed to fetch package object")
+    PACKAGE_OBJECT=$(iota client object "$PACKAGE_ADDRESS" --json)
     if [ $? -ne 0 ]; then
         exit 1
     fi
+}
 
+# Function to select module
+select_module() {
     # Extract modules from the disassembled content
     MODULES=$(echo "$PACKAGE_OBJECT" | jq -r '.content.disassembled | keys[]')
 
@@ -186,6 +188,9 @@ prompt_arguments() {
 if [ -z "$PACKAGE_ADDRESS" ]; then
     prompt_package_address
 fi
+
+# Fetch package object (needed for both module and function selection)
+fetch_package_object
 
 # If module not provided, select it
 if [ -z "$MODULE_NAME" ]; then
