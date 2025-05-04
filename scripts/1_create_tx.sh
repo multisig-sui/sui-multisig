@@ -1,8 +1,34 @@
 #!/bin/bash
 # Creates a multisig transaction
 
+# Debug info
+echo "Current directory: $(pwd)"
+echo "Script directory: $(dirname "${BASH_SOURCE[0]}")"
+
 # Source the helper script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "Full script directory: $SCRIPT_DIR"
+echo "Helper script path: $SCRIPT_DIR/util/transaction_helpers.sh"
+
+# Ensure we're in the workspace root (parent of scripts directory)
+WORKSPACE_ROOT="$(dirname "$SCRIPT_DIR")"
+echo "Workspace root: $WORKSPACE_ROOT"
+
+if [ ! -d "$WORKSPACE_ROOT/scripts" ] || [ ! -d "$WORKSPACE_ROOT/multisigs" ]; then
+    echo "❌ Error: Not in workspace root or missing required directories"
+    echo "Please run this script from the workspace root directory"
+    exit 1
+fi
+
+cd "$WORKSPACE_ROOT"
+echo "Changed to workspace root: $(pwd)"
+
+if [ ! -f "$SCRIPT_DIR/util/transaction_helpers.sh" ]; then
+    echo "❌ Error: Helper script not found at $SCRIPT_DIR/util/transaction_helpers.sh"
+    exit 1
+fi
+
+source "$SCRIPT_DIR/util/transaction_helpers.sh"
 
 # Define valid transaction types
 VALID_TYPES=("publish" "upgrade" "call" "transfer")
@@ -44,7 +70,7 @@ done
 
 # Function to select transaction type
 select_transaction_type() {
-    echo "📋 Select transaction type:"
+    echo -e "\n📋 Select transaction type:"
     for i in "${!VALID_TYPES[@]}"; do
         echo "[$i] ${VALID_TYPES[$i]}"
     done
@@ -85,11 +111,13 @@ while [ $i -lt ${#ORIGINAL_ARGS[@]} ]; do
     fi
 done
 
-# Execute the appropriate transaction type script with filtered arguments
-echo "🔄 Executing $TRANSACTION_TYPE transaction..."
+# Execute the appropriate transaction type script with filtered arguments and multisig address
+echo -e "\n🔄 Executing $TRANSACTION_TYPE transaction..."
+echo "Using multisig address as custom signer: $MULTISIG_ADDR"
+export MULTISIG_ADDR
 "$SCRIPT_DIR/types/$TRANSACTION_TYPE.sh" "${FILTERED_ARGS[@]}"
 
-# Function to save transaction data
+# Save transaction data with multisig info
 save_transaction_data() {
     local tx_data="$1"
     local tx_type="$2"
@@ -103,5 +131,9 @@ save_transaction_data() {
     # Save transaction bytes
     echo "$tx_data" > "$tx_dir/tx_bytes"
 
+    # Save multisig config for reference
+    echo "$CONFIG_CONTENT" > "$tx_dir/multisig_config.json"
+
     echo "💾 Transaction data saved to: $tx_dir/tx_bytes"
+    echo "💾 Multisig config saved to: $tx_dir/multisig_config.json"
 }

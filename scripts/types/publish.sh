@@ -70,11 +70,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Store the transaction data
-echo "✅ Transaction data generated successfully"
-echo "🔍 Transaction data:"
-echo "$TRANSACTION_DATA"
-
 # Save the transaction data
 save_transaction_data "$TRANSACTION_DATA" "publish" "$(basename "$PACKAGE_DIR")"
 

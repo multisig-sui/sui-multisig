@@ -96,8 +96,6 @@ echo "✅ Transaction data generated successfully"
 echo "📦 Package directory: $PACKAGE_DIR"
 echo "🔑 Upgrade capability: $UPGRADE_CAPABILITY"
 
-echo "🔍 Transaction data:"
-echo "$TRANSACTION_DATA"
 
 # Save the transaction data
 save_transaction_data "$TRANSACTION_DATA" "upgrade" "$(basename "$PACKAGE_DIR")"

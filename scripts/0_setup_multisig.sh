@@ -216,9 +216,63 @@ fi
 # Create multisigs directory if it doesn't exist
 mkdir -p multisigs
 
-# Save the configuration using the multisig address as filename
-CONFIG_FILE="multisigs/${MULTISIG_ADDRESS#0x}.json"
+# Prompt for custom name
+echo -e "\n📝 Enter a name for this multisig wallet"
+echo "   (press enter to use the address as name)"
+read -p "> " WALLET_NAME
+
+# Determine filename
+if [ -z "$WALLET_NAME" ]; then
+    CONFIG_FILE="multisigs/${MULTISIG_ADDRESS#0x}.json"
+else
+    # Replace spaces with underscores and remove special characters
+    WALLET_NAME=$(echo "$WALLET_NAME" | tr ' ' '_' | tr -cd '[:alnum:]_-')
+    CONFIG_FILE="multisigs/${WALLET_NAME}.json"
+fi
+
+# Check if file already exists
+if [ -f "$CONFIG_FILE" ]; then
+    echo "❌ A wallet with this name already exists"
+    exit 1
+fi
+
 echo "$MULTISIG_RESPONSE" > "$CONFIG_FILE"
+
+# Fund the multisig address with IOTA tokens
+echo -e "\n🔄 Funding multisig address..."
+
+# Get current gas balance
+GAS_RESPONSE=$(iota client gas --json)
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to get gas balance"
+    exit 1
+fi
+
+# Extract first gas coin ID and balance - fixing array parsing
+FIRST_GAS_COIN=$(echo "$GAS_RESPONSE" | jq -r '.[0].gasCoinId')
+NANOS_BALANCE=$(echo "$GAS_RESPONSE" | jq -r '.[0].nanosBalance')
+
+if [ -z "$FIRST_GAS_COIN" ] || [ "$FIRST_GAS_COIN" = "null" ]; then
+    echo "❌ No gas coins available"
+    exit 1
+fi
+
+# Determine amount to send (minimum of 100000 or available balance)
+AMOUNT_TO_SEND=100000000
+if [ "$NANOS_BALANCE" -lt "$AMOUNT_TO_SEND" ]; then
+    AMOUNT_TO_SEND=$NANOS_BALANCE
+fi
+
+# Send funds to multisig address
+echo "🔄 Sending $AMOUNT_TO_SEND nanoIOTA to multisig address..."
+PAYMENT_RESPONSE=$(iota client pay-iota --input-coins "$FIRST_GAS_COIN" --recipients "$MULTISIG_ADDRESS" --amounts "$AMOUNT_TO_SEND" --gas-budget 50000000)
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to send funds to multisig address"
+    echo "$PAYMENT_RESPONSE"
+    exit 1
+fi
+
+echo "✅ Successfully funded multisig address with $AMOUNT_TO_SEND nanoIOTA"
 
 echo -e "\n✅ Multisig setup complete!"
 echo "📦 Multisig address: $MULTISIG_ADDRESS"

@@ -96,8 +96,6 @@ echo "✅ Transaction data generated successfully"
 echo "📦 Recipient address: $RECIPIENT"
 echo "🔑 Object ID: $OBJECT_ID"
 
-echo "🔍 Transaction data:"
-echo "$TRANSACTION_DATA"
 
 # Save the transaction data
 save_transaction_data "$TRANSACTION_DATA" "transfer" "$RECIPIENT"

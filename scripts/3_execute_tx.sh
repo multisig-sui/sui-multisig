@@ -60,7 +60,7 @@ done
 echo -e "\n💼 Using multisig wallet: $(basename "$CONFIG_FILE")"
 echo "📦 Address: $(echo "$CONFIG_CONTENT" | jq -r .multisig_address)"
 echo "🔐 Threshold: $(echo "$CONFIG_CONTENT" | jq -r .threshold)"
-echo "👥 Signers: $(echo "$CONFIG_CONTENT" | jq -r '.signers | length')"
+echo "👥 Signers: $(echo "$CONFIG_CONTENT" | jq -r '.multisig | length')"
 
 # Check if transactions directory exists
 if [ ! -d "transactions" ]; then
@@ -198,12 +198,20 @@ fi
 
 # Execute the transaction
 echo "🔄 Submitting transaction..."
-EXECUTE_CMD="iota client execute-signed-tx --tx-bytes \"$TX_BYTES\" --signatures \"$SERIALIZED_MULTISIG\""
-echo "Command: $EXECUTE_CMD"
-eval "$EXECUTE_CMD"
+EXECUTE_CMD="iota client execute-signed-tx --tx-bytes \"$TX_BYTES\" --signatures \"$SERIALIZED_MULTISIG\" --json"
+RESPONSE=$(eval "$EXECUTE_CMD")
 
 if [ $? -eq 0 ]; then
-    echo "✅ Transaction successfully submitted to the network"
+    TX_HASH=$(echo "$RESPONSE" | jq -r '.digest')
+    echo "✅ Transaction successfully submitted"
+    echo "📝 Transaction hash: $TX_HASH"
+
+    # Clean up transaction directory
+    echo "🧹 Cleaning up transaction files..."
+    rm -rf "$TX_DIR"
+    if [ $? -ne 0 ]; then
+        echo "⚠️ Warning: Failed to clean up transaction directory"
+    fi
 else
     echo "❌ Failed to submit transaction"
     exit 1

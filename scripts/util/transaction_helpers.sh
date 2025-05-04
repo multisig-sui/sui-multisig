@@ -186,3 +186,67 @@ decode_and_display_tx() {
     echo "------------------------"
     return 0
 }
+
+# Function to select a multisig wallet
+# Returns: JSON string containing the selected multisig config
+select_multisig_wallet() {
+    local CONFIG_FILES=()
+    # Use readarray to handle filenames with spaces
+    readarray -d '' CONFIG_FILES < <(find "multisigs" -maxdepth 1 -name "*.json" -print0)
+
+    # Check if multisigs directory exists and has files
+    if [ ${#CONFIG_FILES[@]} -eq 0 ]; then
+        echo "❌ Error: No multisig wallets found" >&2
+        echo "Please run 0_setup_multisig.sh first to create a multisig wallet" >&2
+        return 1
+    fi
+
+    # Display available multisig wallets with details
+    echo "📋 Available multisig wallets:"
+    echo "------------------------"
+    for i in "${!CONFIG_FILES[@]}"; do
+        if [ -f "${CONFIG_FILES[$i]}" ]; then
+            # Clean and parse the JSON file
+            local WALLET_DATA
+            WALLET_DATA=$(tr -d '\n' < "${CONFIG_FILES[$i]}" | jq -c '.' 2>/dev/null)
+            if [ $? -eq 0 ] && [ -n "$WALLET_DATA" ]; then
+                local MULTISIG_ADDR
+                local THRESHOLD
+                local SIGNER_COUNT
+                MULTISIG_ADDR=$(echo "$WALLET_DATA" | jq -r '.multisigAddress')
+                THRESHOLD=$(echo "$WALLET_DATA" | jq -r '.threshold')
+                SIGNER_COUNT=$(echo "$WALLET_DATA" | jq -r '.multisig | length')
+                echo "[$i] $(basename "${CONFIG_FILES[$i]}")"
+                echo "    └─ $MULTISIG_ADDR (threshold: $THRESHOLD, signers: $SIGNER_COUNT)"
+            else
+                echo "[$i] $(basename "${CONFIG_FILES[$i]}") (invalid config)"
+            fi
+        fi
+    done
+    echo "------------------------"
+
+    # Prompt user to select a multisig wallet
+    while true; do
+        read -p "Select multisig wallet number: " selection
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -lt "${#CONFIG_FILES[@]}" ]; then
+            local CONFIG_FILE="${CONFIG_FILES[$selection]}"
+            if [ -f "$CONFIG_FILE" ]; then
+                # Clean and validate JSON
+                local CONFIG_CONTENT
+                CONFIG_CONTENT=$(tr -d '\n' < "$CONFIG_FILE" | jq -c '.' 2>/dev/null)
+                if [ $? -eq 0 ]; then
+                    echo "$CONFIG_CONTENT"
+                    return 0
+                else
+                    echo "❌ Error: Invalid JSON in config file" >&2
+                    return 1
+                fi
+            else
+                echo "❌ Error: Selected config file not found" >&2
+                return 1
+            fi
+        else
+            echo "❌ Invalid selection. Please enter a number between 0 and $((${#CONFIG_FILES[@]}-1))" >&2
+        fi
+    done
+}

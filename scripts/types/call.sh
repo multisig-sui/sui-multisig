@@ -30,6 +30,7 @@ eval set -- "$TEMP"
 PACKAGE_ADDRESS=""
 MODULE_NAME=""
 FUNCTION_NAME=""
+MULTISIG_ADDR="0xb752d93cb99b7a1e6bc62231cc6b8070cebff461924813fe90be853e37e2f285" # TODO REMOVE HARDCODED MULTISIG
 ARGS=()
 
 # Process options
@@ -45,6 +46,10 @@ while true; do
             ;;
         -f|--function)
             FUNCTION_NAME="$2"
+            shift 2
+            ;;
+        -ms|--multisig)
+            MULTISIG_ADDR="$2"
             shift 2
             ;;
         -a|--args)
@@ -184,6 +189,11 @@ prompt_arguments() {
     fi
 }
 
+# Check if MULTISIG_ADDR is set
+if [ -z "$MULTISIG_ADDR" ]; then
+    select_multisig_wallet
+fi
+
 # If package address not provided, prompt for it
 if [ -z "$PACKAGE_ADDRESS" ]; then
     prompt_package_address
@@ -208,7 +218,7 @@ if [ ${#ARGS[@]} -eq 0 ]; then
 fi
 
 # Build the IOTA CLI command
-CMD="iota client call --package $PACKAGE_ADDRESS --module $MODULE_NAME --function $FUNCTION_NAME --serialize-unsigned-transaction"
+CMD="iota client call --package $PACKAGE_ADDRESS --module $MODULE_NAME --function $FUNCTION_NAME --serialize-unsigned-transaction --custom-signer $MULTISIG_ADDR"
 # Add arguments if any
 if [ ${#ARGS[@]} -gt 0 ]; then
     CMD="$CMD --args"
@@ -236,8 +246,6 @@ if [ ${#ARGS[@]} -gt 0 ]; then
     done
 fi
 
-echo "🔍 Transaction data:"
-echo "$TRANSACTION_DATA"
 
 # Save the transaction data
 save_transaction_data "$TRANSACTION_DATA" "call" "${MODULE_NAME}_${FUNCTION_NAME}"
