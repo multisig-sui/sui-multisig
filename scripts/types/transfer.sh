@@ -27,6 +27,7 @@ eval set -- "$TEMP"
 # Initialize variables
 RECIPIENT=""
 OBJECT_ID=""
+MULTISIG_ADDR=""
 
 # Process options
 while true; do
@@ -84,8 +85,13 @@ if [ -z "$OBJECT_ID" ]; then
     prompt_object
 fi
 
+# Check if MULTISIG_ADDR is set
+if [ -z "$MULTISIG_ADDR" ]; then
+    select_multisig_wallet
+fi
+
 # Build and execute the IOTA CLI command
-CMD="iota client transfer --to $RECIPIENT --object-id $OBJECT_ID --serialize-unsigned-transaction"
+CMD="iota client transfer --to $RECIPIENT --object-id $OBJECT_ID --serialize-unsigned-transaction --custom-signer $MULTISIG_ADDR"
 TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data")
 if [ $? -ne 0 ]; then
     exit 1
@@ -95,7 +101,7 @@ fi
 echo "✅ Transaction data generated successfully"
 echo "📦 Recipient address: $RECIPIENT"
 echo "🔑 Object ID: $OBJECT_ID"
-
+echo "🔑 Multisig address: $MULTISIG_ADDR"
 
 # Save the transaction data
 save_transaction_data "$TRANSACTION_DATA" "transfer" "$RECIPIENT"

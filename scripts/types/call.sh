@@ -193,7 +193,6 @@ prompt_arguments() {
 if [ -z "$MULTISIG_ADDR" ]; then
     select_multisig_wallet
 fi
-echo "MULTISIG_ADDR: $MULTISIG_ADDR"
 
 # If package address not provided, prompt for it
 if [ -z "$PACKAGE_ADDRESS" ]; then
@@ -239,6 +238,7 @@ echo "✅ Transaction data generated successfully"
 echo "📦 Package address: $PACKAGE_ADDRESS"
 echo "🔑 Module: $MODULE_NAME"
 echo "🔑 Function: $FUNCTION_NAME"
+echo "🔑 Multisig address: $MULTISIG_ADDR"
 
 if [ ${#ARGS[@]} -gt 0 ]; then
     echo "📝 Function arguments:"

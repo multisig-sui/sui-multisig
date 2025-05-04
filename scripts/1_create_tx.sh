@@ -113,7 +113,6 @@ done
 
 # Execute the appropriate transaction type script with filtered arguments and multisig address
 echo -e "\n🔄 Executing $TRANSACTION_TYPE transaction..."
-echo "Using multisig address as custom signer: $MULTISIG_ADDR"
 export MULTISIG_ADDR
 "$SCRIPT_DIR/types/$TRANSACTION_TYPE.sh" "${FILTERED_ARGS[@]}"
 
