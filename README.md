@@ -16,9 +16,9 @@ In the wake of recent incidents like the [SafeWallet frontend compromise](https:
 
 For users who prefer a visual experience, we've also built a **frontend companion tool**:
 
-- 100% client-side — runs in your browser, no backend server.
+- 100% client-side - runs in your browser, no backend server.
 - Built to work *alongside* the CLI, not replace it.
-- Delegates signing to trusted IOTA browser wallets (e.g., Nightly).
+- Delegates signing to trusted IOTA browser extension wallets (like IOTA wallet).
 - Great for preparing, reviewing, and coordinating transactions visually.
 
 👉 **Try it now:** [https://multisig-iota.vercel.app](https://multisig-iota.vercel.app)
