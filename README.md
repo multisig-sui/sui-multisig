@@ -11,7 +11,7 @@ In the wake of recent security incidents (like the [SafeWallet frontend compromi
 
 ## Prerequisites
 
-- [IOTA CLI](https://docs.iota.org/developer/getting-started/install-iota)
+- [IOTA CLI](https://docs.iota.org/developer/getting-started/install-iota) - Install the [custom fork](https://github.com/arjanjohan/iota/tree/custom-sender-cli)
 - Bash shell environment
 - jq (for JSON processing)
 
@@ -97,13 +97,8 @@ Executes the next transaction in the multisig queue, given that is has sufficien
 To learn more about how multisigs work on IOTA check out these resources:
 - [IOTA Developer docs](https://docs.iota.org/developer/cryptography/transaction-auth/multisig)
 
-## TODO
-### Essential
-- Cannot execute tx as multisig. I think it might be error in script 1, the tx is created with main account as sender, not multisig
-  - Select multisig address as sender in step 1 for creating transaction
-  - In step 2 user first picks a multisig, then display available transactions from this multisig.
-  - In step 2, only show addresses from this multisig as possible signers.
-- Script call fails when a function takes arguments
-- fund multisig in step 0
-### Optional
-- Multisig management scripts (change number of signers etc.)
+## Next steps
+Some further improves will be made after the hackathon:
+- *Fix:* Script call fails when a function takes arguments
+- *Feature:* Multisig management scripts (change number of signers etc.)
+- *PR:* Create a PR for the IOTA CLI, so the custom fork is not needed anymore

@@ -216,8 +216,26 @@ fi
 # Create multisigs directory if it doesn't exist
 mkdir -p multisigs
 
-# Save the configuration using the multisig address as filename
-CONFIG_FILE="multisigs/${MULTISIG_ADDRESS#0x}.json"
+# Prompt for custom name
+echo -e "\n📝 Enter a name for this multisig wallet"
+echo "   (press enter to use the address as name)"
+read -p "> " WALLET_NAME
+
+# Determine filename
+if [ -z "$WALLET_NAME" ]; then
+    CONFIG_FILE="multisigs/${MULTISIG_ADDRESS#0x}.json"
+else
+    # Replace spaces with underscores and remove special characters
+    WALLET_NAME=$(echo "$WALLET_NAME" | tr ' ' '_' | tr -cd '[:alnum:]_-')
+    CONFIG_FILE="multisigs/${WALLET_NAME}.json"
+fi
+
+# Check if file already exists
+if [ -f "$CONFIG_FILE" ]; then
+    echo "❌ A wallet with this name already exists"
+    exit 1
+fi
+
 echo "$MULTISIG_RESPONSE" > "$CONFIG_FILE"
 
 # Fund the multisig address with IOTA tokens

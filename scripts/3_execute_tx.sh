@@ -60,7 +60,7 @@ done
 echo -e "\n💼 Using multisig wallet: $(basename "$CONFIG_FILE")"
 echo "📦 Address: $(echo "$CONFIG_CONTENT" | jq -r .multisig_address)"
 echo "🔐 Threshold: $(echo "$CONFIG_CONTENT" | jq -r .threshold)"
-echo "👥 Signers: $(echo "$CONFIG_CONTENT" | jq -r '.signers | length')"
+echo "👥 Signers: $(echo "$CONFIG_CONTENT" | jq -r '.multisig | length')"
 
 # Check if transactions directory exists
 if [ ! -d "transactions" ]; then

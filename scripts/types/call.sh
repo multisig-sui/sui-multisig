@@ -227,8 +227,6 @@ if [ ${#ARGS[@]} -gt 0 ]; then
     done
 fi
 
-echo "🔍 Command: $CMD"
-
 # Generate transaction data
 TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data")
 if [ $? -ne 0 ]; then
@@ -248,8 +246,6 @@ if [ ${#ARGS[@]} -gt 0 ]; then
     done
 fi
 
-echo "🔍 Transaction data:"
-echo "$TRANSACTION_DATA"
 
 # Save the transaction data
 save_transaction_data "$TRANSACTION_DATA" "call" "${MODULE_NAME}_${FUNCTION_NAME}"
