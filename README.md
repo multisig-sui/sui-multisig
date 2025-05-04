@@ -104,5 +104,6 @@ To learn more about how multisigs work on IOTA check out these resources:
   - In step 2 user first picks a multisig, then display available transactions from this multisig.
   - In step 2, only show addresses from this multisig as possible signers.
 - Script call fails when a function takes arguments
+- fund multisig in step 0
 ### Optional
 - Multisig management scripts (change number of signers etc.)

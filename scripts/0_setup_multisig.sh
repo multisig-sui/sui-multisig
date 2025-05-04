@@ -240,7 +240,7 @@ if [ -z "$FIRST_GAS_COIN" ] || [ "$FIRST_GAS_COIN" = "null" ]; then
 fi
 
 # Determine amount to send (minimum of 100000 or available balance)
-AMOUNT_TO_SEND=100000
+AMOUNT_TO_SEND=100000000
 if [ "$NANOS_BALANCE" -lt "$AMOUNT_TO_SEND" ]; then
     AMOUNT_TO_SEND=$NANOS_BALANCE
 fi
