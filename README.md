@@ -9,6 +9,10 @@ In the wake of recent security incidents (like the [SafeWallet frontend compromi
 - Verifiable: All transactions are transparent and can be inspected directly
 - Local execution: Your keys stay on your machine
 
+Create your own multisig! 
+https://multisig-iota.vercel.app/
+
+
 ## Prerequisites
 
 - [IOTA CLI](https://docs.iota.org/developer/getting-started/install-iota)
