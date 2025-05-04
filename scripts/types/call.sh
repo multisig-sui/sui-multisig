@@ -30,7 +30,7 @@ eval set -- "$TEMP"
 PACKAGE_ADDRESS=""
 MODULE_NAME=""
 FUNCTION_NAME=""
-MULTISIG_ADDR="0xb752d93cb99b7a1e6bc62231cc6b8070cebff461924813fe90be853e37e2f285" # TODO REMOVE HARDCODED MULTISIG
+MULTISIG_ADDR=""
 ARGS=()
 
 # Process options
@@ -193,6 +193,7 @@ prompt_arguments() {
 if [ -z "$MULTISIG_ADDR" ]; then
     select_multisig_wallet
 fi
+echo "MULTISIG_ADDR: $MULTISIG_ADDR"
 
 # If package address not provided, prompt for it
 if [ -z "$PACKAGE_ADDRESS" ]; then

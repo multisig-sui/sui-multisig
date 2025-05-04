@@ -188,6 +188,7 @@ decode_and_display_tx() {
 }
 
 # Function to select a multisig wallet
+# Sets global MULTISIG_ADDR variable
 # Returns: JSON string containing the selected multisig config
 select_multisig_wallet() {
     local CONFIG_FILES=()
@@ -210,14 +211,14 @@ select_multisig_wallet() {
             local WALLET_DATA
             WALLET_DATA=$(tr -d '\n' < "${CONFIG_FILES[$i]}" | jq -c '.' 2>/dev/null)
             if [ $? -eq 0 ] && [ -n "$WALLET_DATA" ]; then
-                local MULTISIG_ADDR
+                local MULTISIG_ADDR_LOCAL
                 local THRESHOLD
                 local SIGNER_COUNT
-                MULTISIG_ADDR=$(echo "$WALLET_DATA" | jq -r '.multisigAddress')
+                MULTISIG_ADDR_LOCAL=$(echo "$WALLET_DATA" | jq -r '.multisigAddress')
                 THRESHOLD=$(echo "$WALLET_DATA" | jq -r '.threshold')
                 SIGNER_COUNT=$(echo "$WALLET_DATA" | jq -r '.multisig | length')
                 echo "[$i] $(basename "${CONFIG_FILES[$i]}")"
-                echo "    └─ $MULTISIG_ADDR (threshold: $THRESHOLD, signers: $SIGNER_COUNT)"
+                echo "    └─ $MULTISIG_ADDR_LOCAL (threshold: $THRESHOLD, signers: $SIGNER_COUNT)"
             else
                 echo "[$i] $(basename "${CONFIG_FILES[$i]}") (invalid config)"
             fi
@@ -235,7 +236,12 @@ select_multisig_wallet() {
                 local CONFIG_CONTENT
                 CONFIG_CONTENT=$(tr -d '\n' < "$CONFIG_FILE" | jq -c '.' 2>/dev/null)
                 if [ $? -eq 0 ]; then
-                    echo "$CONFIG_CONTENT"
+                    # Set global MULTISIG_ADDR variable
+                    MULTISIG_ADDR=$(echo "$CONFIG_CONTENT" | jq -r '.multisigAddress')
+                    if [ -z "$MULTISIG_ADDR" ] || [ "$MULTISIG_ADDR" = "null" ]; then
+                        echo "❌ Error: Failed to extract multisig address from config" >&2
+                        return 1
+                    fi
                     return 0
                 else
                     echo "❌ Error: Invalid JSON in config file" >&2
