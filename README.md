@@ -27,9 +27,11 @@ For users who prefer a visual experience, we've also built a **frontend companio
 
 ## Prerequisites
 
-- [IOTA CLI](https://docs.iota.org/developer/getting-started/install-iota) - Install the [custom fork](https://github.com/arjanjohan/iota/tree/custom-sender-cli)
+- [IOTA CLI](https://docs.iota.org/developer/getting-started/install-iota) - *Required: Install this [custom fork](https://github.com/arjanjohan/iota/tree/custom-sender-cli)*
 - Bash shell environment
 - jq (for JSON processing)
+
+__NOTE: To use this tool you must use the [custom fork](https://github.com/arjanjohan/iota/tree/custom-sender-cli) of the IOTA CLI. This custom fork allows to create a transaction with a custom signer (i.e. the multisig wallet). We will create a PR so this feature will be available in the next version of the IOTA CLI.__
 
 ## Initial setup
 
