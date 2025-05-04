@@ -97,7 +97,7 @@ export function WalletInfo() {
                 <Flex align="center" gap="2">
                     <Text>Address: {account.address}</Text>
                     <Button size="1" variant="ghost" onClick={handleCopyPublicKey} title="Copy Public Key (Base64 w/ Flag)">
-                        Copy PK
+                        Copy Public Key
                     </Button>
                 </Flex>
                 {copyMessage && <Text size="1" color="gray">{copyMessage}</Text>}

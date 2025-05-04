@@ -1,13 +1,29 @@
-# IOTA Multisig CLI
+# IOTA Multisig CLI 🛡️
 
 ![logo](/assets/logo.png)
 
-This repository contains scripts for managing multisig transactions on the IOTA blockchain, including creating, approving, and executing transactions.
+This repository contains tools for managing multisig operations on the IOTA blockchain using a **CLI-first** and **security-by-design** approach.
 
-In the wake of recent security incidents (like the [SafeWallet frontend compromise](https://x.com/safe/status/1894768522720350673)), it's become clear that web-based multisig interfaces pose additional risks. Web frontends can be modified by attackers, making transaction verification difficult or impossible for users. The IOTA Multisig CLI Tool aims to be a more safe and robust alternative:
-- CLI-first: No web frontend means no risk of compromised interfaces
-- Verifiable: All transactions are transparent and can be inspected directly
-- Local execution: Your keys stay on your machine
+In the wake of recent incidents like the [SafeWallet frontend compromise](https://x.com/safe/status/1894768522720350673), it's become clear that many multisig platforms expose users to unnecessary risk. Frontends can be tampered with, and users often can't verify what they're signing. This project aims to fix that.
+
+## 🔐 Why CLI-First?
+
+- **No Web Risks:** CLI runs locally with no reliance on a web frontend = no spoofing, injection, or DNS attacks.
+- **Full Verifiability:** You can inspect every transaction before it's signed or sent.
+- **Local Execution:** Your private keys stay with you. Nothing sensitive leaves your machine.
+
+## 🌐 Web Frontend (Optional UI)
+
+For users who prefer a visual experience, we've also built a **frontend companion tool**:
+
+- 100% client-side - runs in your browser, no backend server.
+- Built to work *alongside* the CLI, not replace it.
+- Delegates signing to trusted IOTA browser extension wallets (like IOTA wallet).
+- Great for preparing, reviewing, and coordinating transactions visually.
+
+👉 **Try it now:** [https://multisig-iota.vercel.app](https://multisig-iota.vercel.app)
+
+---
 
 ## Prerequisites
 
@@ -102,3 +118,4 @@ Some further improves will be made after the hackathon:
 - *Fix:* Script call fails when a function takes arguments
 - *Feature:* Multisig management scripts (change number of signers etc.)
 - *PR:* Create a PR for the IOTA CLI, so the custom fork is not needed anymore
+
