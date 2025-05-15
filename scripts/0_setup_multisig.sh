@@ -242,13 +242,13 @@ echo "$MULTISIG_RESPONSE" > "$CONFIG_FILE"
 # Fund the multisig address with Sui tokens from faucet
 echo -e "\n🔄 Funding multisig address..."
 
-FAUCET_RESPONSE=$(iota client faucet --address $MULTISIG_ADDRESS)
+FAUCET_RESPONSE=$(sui client faucet --address $MULTISIG_ADDRESS 2>&1)
 if [ $? -ne 0 ]; then
     echo "❌ Failed to get funds from faucet"
-    exit 1
+    echo "$FAUCET_RESPONSE"
+else
+    echo "✅ Successfully funded multisig address from faucet"
 fi
-
-echo "✅ Successfully funded multisig address from faucet"
 
 echo -e "\n✅ Multisig setup complete!"
 echo "📦 Multisig address: $MULTISIG_ADDRESS"
