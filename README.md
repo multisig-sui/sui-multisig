@@ -1,8 +1,8 @@
-# IOTA Multisig CLI 🛡️
+# Sui Multisig CLI 🛡️
 
 ![logo](/assets/logo.png)
 
-This repository contains tools for managing multisig operations on the IOTA blockchain using a **CLI-first** and **security-by-design** approach.
+This repository contains tools for managing multisig operations on the Sui blockchain using a **CLI-first** and **security-by-design** approach.
 
 In the wake of recent incidents like the [SafeWallet frontend compromise](https://x.com/safe/status/1894768522720350673), it's become clear that many multisig platforms expose users to unnecessary risk. Frontends can be tampered with, and users often can't verify what they're signing. This project aims to fix that.
 
@@ -18,20 +18,19 @@ For users who prefer a visual experience, we've also built a **frontend companio
 
 - 100% client-side - runs in your browser, no backend server.
 - Built to work *alongside* the CLI, not replace it.
-- Delegates signing to trusted IOTA browser extension wallets (like IOTA wallet).
+- Delegates signing to trusted Sui browser extension wallets (like Sui wallet).
 - Great for preparing, reviewing, and coordinating transactions visually.
 
-👉 **Try it now:** [https://multisig-iota.vercel.app](https://multisig-iota.vercel.app)
+👉 **Try it now:** [TODO](TODO)
 
 ---
 
 ## Prerequisites
 
-- [IOTA CLI](https://docs.iota.org/developer/getting-started/install-iota) - *Required: Install this [custom fork](https://github.com/arjanjohan/iota/tree/custom-sender-cli)*
+- [Sui CLI](https://docs.sui.io/references/cli/client)
 - Bash shell environment
 - jq (for JSON processing)
 
-__NOTE: To use this tool you must use the [custom fork](https://github.com/arjanjohan/iota/tree/custom-sender-cli) of the IOTA CLI. This custom fork allows to create a transaction with a custom signer (i.e. the multisig wallet). We will create a PR so this feature will be available in the next version of the IOTA CLI.__
 
 ## Initial setup
 
@@ -52,7 +51,7 @@ Sets up a multisig wallet with multiple signers. The script will guide you throu
 
 The configuration is saved to a JSON file in the `transactions` directory for future reference.
 
-### 1. Create transaction
+### 1. Create transaction 0xfc4aa8c4442074e4a2b22a07a27c25ec3c4a611d1a3e4bf63c2638d9e860a767
 
 ```bash
 bash ./scripts/1_create_tx.sh [options]
@@ -112,12 +111,7 @@ Executes the next transaction in the multisig queue, given that is has sufficien
 
 ## Learn more
 
-To learn more about how multisigs work on IOTA check out these resources:
-- [IOTA Developer docs](https://docs.iota.org/developer/cryptography/transaction-auth/multisig)
+To learn more about how multisigs work on Sui check out these resources:
+- [Sui Developer docs](https://docs.sui.io/concepts/cryptography/transaction-auth/multisig)
 
-## Next steps
-Some further improves will be made after the hackathon:
-- *Fix:* Script call fails when a function takes arguments
-- *Feature:* Multisig management scripts (change number of signers etc.)
-- *PR:* Create a PR for the IOTA CLI, so the custom fork is not needed anymore
 
