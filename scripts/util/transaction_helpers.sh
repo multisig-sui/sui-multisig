@@ -99,9 +99,9 @@ return_to_original_dir() {
 select_address() {
     local prompt_msg="${1:-Enter address name (or press enter for active address): }"
 
-    # Get addresses from iota client
+    # Get addresses from Sui client
     local ADDRESSES_JSON
-    ADDRESSES_JSON=$(iota client addresses --json)
+    ADDRESSES_JSON=$(sui client addresses --json)
     if [ $? -ne 0 ]; then
         echo "❌ Failed to get addresses" >&2
         return 1
@@ -159,7 +159,7 @@ decode_and_display_tx() {
     echo -e "\n📄 Transaction Details:"
     echo "------------------------"
     local tx_info
-    tx_info=$(iota keytool decode-or-verify-tx --tx-bytes "$tx_bytes" --json)
+    tx_info=$(sui keytool decode-or-verify-tx --tx-bytes "$tx_bytes" --json)
     if [ $? -ne 0 ]; then
         echo "❌ Error: Failed to decode transaction"
         return 1

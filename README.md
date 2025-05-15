@@ -40,6 +40,8 @@ Before you start you must initialze some accounts and a multisig.
 
 ### 0. Setup Multisig Wallet
 
+First, ensure you have initialized the Sui CLI and connected to a Sui Full node. Instructions and more details can be found [here](https://docs.sui.io/references/cli/client).
+
 ```bash
 bash ./scripts/0_setup_multisig.sh
 ```

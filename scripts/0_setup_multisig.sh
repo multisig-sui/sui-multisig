@@ -82,8 +82,8 @@ validate_threshold() {
     return 0
 }
 
-# Get addresses from iota client
-ADDRESSES_JSON=$(iota client addresses --json)
+# Get addresses from sui client
+ADDRESSES_JSON=$(sui client addresses --json)
 if [ $? -ne 0 ]; then
     echo "❌ Failed to get addresses"
     exit 1
@@ -166,7 +166,7 @@ done
 
 # Get public keys for selected addresses
 echo -e "\n🔄 Getting public keys for selected addresses..."
-KEYS_JSON=$(iota keytool list --json)
+KEYS_JSON=$(sui keytool list --json)
 if [ $? -ne 0 ]; then
     echo "❌ Failed to get public keys"
     exit 1
@@ -174,7 +174,7 @@ fi
 
 declare -A PUB_KEYS
 for addr in "${SELECTED_ADDRESSES[@]}"; do
-    PUB_KEY=$(echo "$KEYS_JSON" | jq -r --arg addr "$addr" '.[] | select(.iotaAddress == $addr) | .publicBase64KeyWithFlag')
+    PUB_KEY=$(echo "$KEYS_JSON" | jq -r --arg addr "$addr" '.[] | select(.suiAddress == $addr) | .publicBase64Key')
     if [ -z "$PUB_KEY" ]; then
         echo "❌ Failed to get public key for address: $addr"
         exit 1
@@ -183,7 +183,7 @@ for addr in "${SELECTED_ADDRESSES[@]}"; do
 done
 
 # Build the command
-CMD="iota keytool multi-sig-address --threshold $THRESHOLD"
+CMD="sui keytool multi-sig-address --threshold $THRESHOLD"
 
 # Add public keys and weights
 for addr in "${SELECTED_ADDRESSES[@]}"; do
@@ -199,6 +199,7 @@ CMD="$CMD --json"
 
 # Execute the command
 echo -e "\n🔄 Generating multisig address..."
+echo "$CMD"
 MULTISIG_RESPONSE=$(eval "$CMD")
 if [ $? -ne 0 ]; then
     echo "❌ Failed to generate multisig address"
@@ -238,46 +239,21 @@ fi
 
 echo "$MULTISIG_RESPONSE" > "$CONFIG_FILE"
 
-# Fund the multisig address with IOTA tokens
+# Fund the multisig address with Sui tokens from faucet
 echo -e "\n🔄 Funding multisig address..."
 
-# Get current gas balance
-GAS_RESPONSE=$(iota client gas --json)
+FAUCET_RESPONSE=$(iota client faucet --address $MULTISIG_ADDRESS)
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to get gas balance"
+    echo "❌ Failed to get funds from faucet"
     exit 1
 fi
 
-# Extract first gas coin ID and balance - fixing array parsing
-FIRST_GAS_COIN=$(echo "$GAS_RESPONSE" | jq -r '.[0].gasCoinId')
-NANOS_BALANCE=$(echo "$GAS_RESPONSE" | jq -r '.[0].nanosBalance')
-
-if [ -z "$FIRST_GAS_COIN" ] || [ "$FIRST_GAS_COIN" = "null" ]; then
-    echo "❌ No gas coins available"
-    exit 1
-fi
-
-# Determine amount to send (minimum of 100000 or available balance)
-AMOUNT_TO_SEND=100000000
-if [ "$NANOS_BALANCE" -lt "$AMOUNT_TO_SEND" ]; then
-    AMOUNT_TO_SEND=$NANOS_BALANCE
-fi
-
-# Send funds to multisig address
-echo "🔄 Sending $AMOUNT_TO_SEND nanoIOTA to multisig address..."
-PAYMENT_RESPONSE=$(iota client pay-iota --input-coins "$FIRST_GAS_COIN" --recipients "$MULTISIG_ADDRESS" --amounts "$AMOUNT_TO_SEND" --gas-budget 50000000)
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to send funds to multisig address"
-    echo "$PAYMENT_RESPONSE"
-    exit 1
-fi
-
-echo "✅ Successfully funded multisig address with $AMOUNT_TO_SEND nanoIOTA"
+echo "✅ Successfully funded multisig address from faucet"
 
 echo -e "\n✅ Multisig setup complete!"
 echo "📦 Multisig address: $MULTISIG_ADDRESS"
 echo "🔑 Configuration saved to: $CONFIG_FILE"
 echo ""
 echo "Next steps:"
-echo "1. Fund the multisig address with IOTA tokens"
+echo "1. Fund the multisig address with SUI tokens"
 echo "2. Use the multisig address in your transactions"
