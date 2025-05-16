@@ -36,7 +36,7 @@ save_transaction_data() {
     timestamp=$(date +%Y%m%d_%H%M%S)
 
     # Create transaction directory
-    local tx_dir="transactions/tx_${transaction_type}_${additional_info}_${timestamp}"
+    local tx_dir="transactions/tx_${timestamp}_${transaction_type}_${additional_info}"
     mkdir -p "$tx_dir"
 
     # Save the transaction bytes

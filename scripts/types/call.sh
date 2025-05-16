@@ -84,7 +84,7 @@ prompt_package_address() {
 # Function to fetch package object
 fetch_package_object() {
     echo "🔄 Fetching package object for address: $PACKAGE_ADDRESS"
-    PACKAGE_OBJECT=$(iota client object "$PACKAGE_ADDRESS" --json)
+    PACKAGE_OBJECT=$(sui client object "$PACKAGE_ADDRESS" --json)
     if [ $? -ne 0 ]; then
         exit 1
     fi
@@ -217,8 +217,8 @@ if [ ${#ARGS[@]} -eq 0 ]; then
     prompt_arguments
 fi
 
-# Build the IOTA CLI command
-CMD="iota client call --package $PACKAGE_ADDRESS --module $MODULE_NAME --function $FUNCTION_NAME --serialize-unsigned-transaction --custom-signer $MULTISIG_ADDR"
+# Build the Sui CLI command
+CMD="sui client call --package $PACKAGE_ADDRESS --module $MODULE_NAME --function $FUNCTION_NAME --serialize-unsigned-transaction --custom-signer $MULTISIG_ADDR"
 # Add arguments if any
 if [ ${#ARGS[@]} -gt 0 ]; then
     CMD="$CMD --args"

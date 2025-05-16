@@ -115,24 +115,3 @@ done
 echo -e "\n🔄 Executing $TRANSACTION_TYPE transaction..."
 export MULTISIG_ADDR
 "$SCRIPT_DIR/types/$TRANSACTION_TYPE.sh" "${FILTERED_ARGS[@]}"
-
-# Save transaction data with multisig info
-save_transaction_data() {
-    local tx_data="$1"
-    local tx_type="$2"
-    local tx_name="$3"
-    local timestamp=$(date +%Y%m%d_%H%M%S)
-
-    # Create directory name
-    local tx_dir="transactions/tx_${tx_type}_${tx_name}_${timestamp}"
-    mkdir -p "$tx_dir"
-
-    # Save transaction bytes
-    echo "$tx_data" > "$tx_dir/tx_bytes"
-
-    # Save multisig config for reference
-    echo "$CONFIG_CONTENT" > "$tx_dir/multisig_config.json"
-
-    echo "💾 Transaction data saved to: $tx_dir/tx_bytes"
-    echo "💾 Multisig config saved to: $tx_dir/multisig_config.json"
-}

@@ -69,10 +69,12 @@ if [ -z "$MULTISIG_ADDR" ]; then
     select_multisig_wallet
 fi
 
-# Build and execute the IOTA CLI command
-CMD="iota client publish \"$PACKAGE_DIR\" --serialize-unsigned-transaction --custom-signer $MULTISIG_ADDR"
+# Build and execute the Sui CLI command
+CMD="sui client publish \"$PACKAGE_DIR\" --serialize-unsigned-transaction --custom-signer $MULTISIG_ADDR"
 TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data")
 if [ $? -ne 0 ]; then
+    echo "❌ Failed to generate transaction data"
+    echo "❌ $TRANSACTION_DATA"
     exit 1
 fi
 

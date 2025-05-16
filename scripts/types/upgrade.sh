@@ -90,8 +90,8 @@ if [ -z "$UPGRADE_CAPABILITY" ]; then
     prompt_upgrade_capability
 fi
 
-# Build and execute the IOTA CLI command
-CMD="iota client upgrade --upgrade-capability $UPGRADE_CAPABILITY \"$PACKAGE_DIR\" --serialize-unsigned-transaction --custom-signer $MULTISIG_ADDR"
+# Build and execute the Sui CLI command
+CMD="sui client upgrade --upgrade-capability $UPGRADE_CAPABILITY \"$PACKAGE_DIR\" --serialize-unsigned-transaction --custom-signer $MULTISIG_ADDR"
 TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data")
 if [ $? -ne 0 ]; then
     exit 1

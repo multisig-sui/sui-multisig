@@ -61,8 +61,8 @@ if [[ ! "$APPROVE" =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-# Get addresses from iota client
-ADDRESSES_JSON=$(iota client addresses --json)
+# Get addresses from Sui client
+ADDRESSES_JSON=$(sui client addresses --json)
 ACTIVE_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r '.activeAddress')
 
 # Create signatures directory if it doesn't exist
@@ -115,7 +115,7 @@ fi
 echo "Signing with address: $SIGNER_ADDRESS"
 
 # Execute signing and store full response
-SIGNATURE_RESPONSE=$(iota keytool sign --address "$SIGNER_ADDRESS" --data "$TX_BYTES" --json)
+SIGNATURE_RESPONSE=$(sui keytool sign --address "$SIGNER_ADDRESS" --data "$TX_BYTES" --json)
 if [ $? -ne 0 ]; then
     echo "Error: Failed to sign transaction"
     exit 1
