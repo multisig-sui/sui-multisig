@@ -237,6 +237,9 @@ if [ -f "$CONFIG_FILE" ]; then
     exit 1
 fi
 
+# Add threshold to the JSON response
+MULTISIG_RESPONSE=$(echo "$MULTISIG_RESPONSE" | jq --arg threshold "$THRESHOLD" '. + {threshold: ($threshold|tonumber)}')
+
 echo "$MULTISIG_RESPONSE" > "$CONFIG_FILE"
 
 # Fund the multisig address with Sui tokens from faucet
