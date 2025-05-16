@@ -117,3 +117,7 @@ To learn more about how multisigs work on Sui check out these resources:
 - [Sui Developer docs](https://docs.sui.io/concepts/cryptography/transaction-auth/multisig)
 
 
+## TODO
+
+- Filter transactions by multisig in step 2
+- faucet not working
