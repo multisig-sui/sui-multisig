@@ -119,14 +119,14 @@ THRESHOLD=$(echo "$CONFIG_CONTENT" | jq -r '.threshold')
 TOTAL_WEIGHT=$(echo "$CONFIG_CONTENT" | jq -r '[.multisig[].weight] | add')
 
 # Build command to combine signatures
-COMBINE_CMD="iota keytool multi-sig-combine-partial-sig --threshold $THRESHOLD --json"
+COMBINE_CMD="sui keytool multi-sig-combine-partial-sig --threshold $THRESHOLD --json"
 
 # Add public keys and weights
 PK_LIST=""
 WEIGHT_LIST=""
 while IFS= read -r line; do
     PK_LIST="$PK_LIST $line"
-done < <(echo "$CONFIG_CONTENT" | jq -r '.multisig[].publicBase64KeyWithFlag')
+done < <(echo "$CONFIG_CONTENT" | jq -r '.multisig[].publicBase64Key')
 COMBINE_CMD="$COMBINE_CMD --pks$PK_LIST"
 
 while IFS= read -r line; do
@@ -156,7 +156,7 @@ SIG_LIST=""
 for sig_file in "$SIGS_DIR"/*; do
     addr=$(basename "$sig_file")
     if [[ -n "${VALID_SIGNERS[$addr]}" ]]; then
-        sig_data=$(jq -r '.iotaSignature' "$sig_file")
+        sig_data=$(jq -r '.suiSignature' "$sig_file")
         echo "✓ ${VALID_SIGNERS[$addr]} (weight: ${SIGNER_WEIGHTS[$addr]})"
         SIG_LIST="$SIG_LIST $sig_data"
         ((SIGNED_COUNT++))
@@ -198,7 +198,7 @@ fi
 
 # Execute the transaction
 echo "🔄 Submitting transaction..."
-EXECUTE_CMD="iota client execute-signed-tx --tx-bytes \"$TX_BYTES\" --signatures \"$SERIALIZED_MULTISIG\" --json"
+EXECUTE_CMD="sui client execute-signed-tx --tx-bytes \"$TX_BYTES\" --signatures \"$SERIALIZED_MULTISIG\" --json"
 RESPONSE=$(eval "$EXECUTE_CMD")
 
 if [ $? -eq 0 ]; then
@@ -214,5 +214,6 @@ if [ $? -eq 0 ]; then
     fi
 else
     echo "❌ Failed to submit transaction"
+    echo "❌ $RESPONSE"
     exit 1
 fi
