@@ -4,7 +4,7 @@
 
 This repository contains tools for managing multisig operations on the Sui blockchain using a **CLI-first** and **security-by-design** approach.
 
-In the wake of recent incidents like the [SafeWallet frontend compromise](https://x.com/safe/status/1894768522720350673), it's become clear that many multisig platforms expose users to unnecessary risk. Frontends can be tampered with, and users often can't verify what they're signing. This project aims to fix that.
+In the wake of recent incidents like the [SafeWallet frontend compromise](https://x.com/safe/status/1894768522720350673), it's become clear that many multisig platforms expose users to unnecessary risk. External frontends and tools can be tampered with, and users often can't verify what they're signing. This project aims to fix that by introducing open-source solutions that can be run locally.
 
 ## 🔐 Why CLI-First?
 
@@ -27,9 +27,11 @@ For users who prefer a visual experience, we've also built a **frontend companio
 
 ## Prerequisites
 
-- [Sui CLI](https://docs.sui.io/references/cli/client)
+- [Sui CLI](https://docs.sui.io/references/cli/client) - *Required: Install this custom fork that matches your target network [ (mainnet)](https://github.com/arjanjohan/sui/tree/custom-signer) - [(testnet-v1.48.2)](https://github.com/arjanjohan/sui/tree/custom-signer-testnet) - [(testnet-v1.48.1)](https://github.com/arjanjohan/sui/tree/custom-signer-testnet-v1.48.1)*
 - Bash shell environment
 - jq (for JSON processing)
+
+__NOTE: To use this tool you must use the [custom fork](https://github.com/arjanjohan/sui/tree/custom-signer) of the Sui CLI. This custom fork allows to create a transaction with a custom signer (i.e. the multisig wallet). We created a PR (https://github.com/MystenLabs/sui/pull/22158) to add this new feature to the next version of the Sui CLI.__
 
 
 ## Initial setup
@@ -53,7 +55,7 @@ Sets up a multisig wallet with multiple signers. The script will guide you throu
 
 The configuration is saved to a JSON file in the `transactions` directory for future reference.
 
-### 1. Create transaction 0xfc4aa8c4442074e4a2b22a07a27c25ec3c4a611d1a3e4bf63c2638d9e860a767
+### 1. Create transaction
 
 ```bash
 bash ./scripts/1_create_tx.sh [options]
@@ -120,4 +122,9 @@ To learn more about how multisigs work on Sui check out these resources:
 ## TODO
 
 - Filter transactions by multisig in step 2
-- faucet not working
+
+## Links
+- [Vercel deployment]()
+- [Demo video]()
+- [Pitchdeck](https://docs.google.com/presentation/d/1h-x2YUOr8FiCrCc1weWM6xX1A-5ekZF8Z5Fn9xboOUE/edit?usp=sharing)
+- [PR to add `--custom-signer` flag to Sui CLI](https://github.com/MystenLabs/sui/pull/22158)

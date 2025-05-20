@@ -242,15 +242,50 @@ MULTISIG_RESPONSE=$(echo "$MULTISIG_RESPONSE" | jq --arg threshold "$THRESHOLD" 
 
 echo "$MULTISIG_RESPONSE" > "$CONFIG_FILE"
 
-# Fund the multisig address with Sui tokens from faucet
+# Fund the multisig address with Sui tokens
 echo -e "\n🔄 Funding multisig address..."
 
+# First try faucet
 FAUCET_RESPONSE=$(sui client faucet --address $MULTISIG_ADDRESS 2>&1)
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to get funds from faucet"
-    echo "$FAUCET_RESPONSE"
-else
+if [ $? -eq 0 ]; then
     echo "✅ Successfully funded multisig address from faucet"
+else
+    echo "⚠️ Faucet funding failed, attempting to fund directly from active wallet..."
+
+    # Get current gas balance
+    GAS_RESPONSE=$(sui client gas --json)
+    if [ $? -ne 0 ]; then
+        echo "❌ Failed to get gas balance"
+        echo "⚠️ Original faucet error: $FAUCET_RESPONSE"
+        echo "Continuing with setup..."
+    else
+        # Extract first gas coin ID and balance
+        FIRST_GAS_COIN=$(echo "$GAS_RESPONSE" | jq -r '.[0].gasCoinId')
+        BALANCE=$(echo "$GAS_RESPONSE" | jq -r '.[0].balance')
+
+        if [ -z "$FIRST_GAS_COIN" ] || [ "$FIRST_GAS_COIN" = "null" ]; then
+            echo "❌ No gas coins available"
+            echo "⚠️ Original faucet error: $FAUCET_RESPONSE"
+            echo "Continuing with setup..."
+        else
+            # Determine amount to send (minimum of 0.1 SUI or available balance)
+            AMOUNT_TO_SEND=100000000  # 0.1 SUI in MIST
+            if [ "$BALANCE" -lt "$AMOUNT_TO_SEND" ]; then
+                AMOUNT_TO_SEND=$BALANCE
+            fi
+
+            # Send funds to multisig address
+            echo "🔄 Sending $AMOUNT_TO_SEND MIST to multisig address..."
+            PAYMENT_RESPONSE=$(sui client transfer-sui --sui-coin-object-id $FIRST_GAS_COIN --amount $AMOUNT_TO_SEND --to $MULTISIG_ADDRESS --gas-budget 50000000)
+            if [ $? -eq 0 ]; then
+                echo "✅ Successfully funded multisig address with $AMOUNT_TO_SEND MIST"
+            else
+                echo "❌ Failed to send funds to multisig address"
+                echo "⚠️ Original faucet error: $FAUCET_RESPONSE"
+                echo "Continuing with setup..."
+            fi
+        fi
+    fi
 fi
 
 echo -e "\n✅ Multisig setup complete!"
