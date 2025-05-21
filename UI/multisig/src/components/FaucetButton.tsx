@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button, Text, Flex, Callout, Box } from '@radix-ui/themes';
 import { ReloadIcon, InfoCircledIcon, PaperPlaneIcon } from '@radix-ui/react-icons';
 import { useCurrentAccount, useSuiClientContext } from '@mysten/dapp-kit';
@@ -38,6 +38,15 @@ export function FaucetButton({
   };
 
   const networkForFaucet = getNetworkForFaucet();
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 5000); // Hide error after 5 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const handleFaucetRequest = useCallback(async () => {
     if (!effectiveAddress || !networkForFaucet) {

@@ -8,6 +8,7 @@ import { Secp256k1PublicKey } from '@mysten/sui/keypairs/secp256k1';
 import { Secp256r1PublicKey } from '@mysten/sui/keypairs/secp256r1';
 import { ReloadIcon, InfoCircledIcon } from '@radix-ui/react-icons';
 import { FaucetButton } from '../../components/FaucetButton';
+import { CreateTransactionForm } from '../multisig-tx/CreateTransactionForm';
 
 const SUI_COIN_TYPE = '0x2::sui::SUI';
 const MIST_PER_SUI = 1_000_000_000;
@@ -67,6 +68,7 @@ export function MultisigDashboard({ config, onUnloadConfig }: MultisigDashboardP
   const [balance, setBalance] = useState<CoinBalance | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState<boolean>(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
+  const [showCreateTxForm, setShowCreateTxForm] = useState<boolean>(false);
 
   const fetchBalance = useCallback(async () => {
     if (!config.multisigAddress) return;
@@ -94,6 +96,12 @@ export function MultisigDashboard({ config, onUnloadConfig }: MultisigDashboardP
   const formatBalance = (totalBalance: string) => {
     const balanceInMist = BigInt(totalBalance);
     return (Number(balanceInMist) / MIST_PER_SUI).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 9 });
+  };
+
+  const handleTransactionCreated = (txDigest: string) => {
+    console.log("Transaction created with digest:", txDigest);
+    setShowCreateTxForm(false);
+    fetchBalance();
   };
 
   return (
@@ -181,9 +189,22 @@ export function MultisigDashboard({ config, onUnloadConfig }: MultisigDashboardP
           </Table.Body>
         </Table.Root>
       </Box>
-      {/* Placeholder for future actions like balance display or transaction initiation */}
-      <Box mt="4" p="3" style={{border: '1px dashed var(--gray-a7)', borderRadius: 'var(--radius-2)'}}>
-        <Text color="gray" size="2">Future actions (e.g., Show Balance, Create Transaction) will appear here.</Text>
+      
+      <Box mt="4" p="3" style={!showCreateTxForm ? {border: '1px dashed var(--gray-a7)', borderRadius: 'var(--radius-2)'} : {}}>
+        {showCreateTxForm ? (
+          <CreateTransactionForm 
+            multisigConfig={config}
+            onTransactionCreated={handleTransactionCreated}
+            onCancel={() => setShowCreateTxForm(false)}
+          />
+        ) : (
+          <Flex direction="column" align="center" gap="2">
+            <Text color="gray" size="2">Ready to make a transaction?</Text>
+            <Button onClick={() => setShowCreateTxForm(true)} variant="solid">
+              Create New Transaction
+            </Button>
+          </Flex>
+        )}
       </Box>
     </Card>
   );
