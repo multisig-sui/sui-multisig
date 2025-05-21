@@ -1,12 +1,27 @@
+import React, { useState } from 'react';
 import { ConnectButton } from "@mysten/dapp-kit";
-import { Box, Container, Flex, Heading } from "@radix-ui/themes";
+import { Box, Container, Flex, Heading, Separator } from "@radix-ui/themes";
 import { WalletStatus } from "./WalletStatus";
 import { CreateMultisigFormSui } from "./features/multisig-setup/CreateMultisigFormSui";
+import { LoadMultisigConfig } from './features/multisig-manage/LoadMultisigConfig';
+import { MultisigDashboard } from './features/multisig-manage/MultisigDashboard';
+import { SuiMultisigConfig } from './types';
 
 function App() {
-  const handleMultisigCreationComplete = (config: any) => {
+  const [activeMultisigConfig, setActiveMultisigConfig] = useState<SuiMultisigConfig | null>(null);
+
+  const handleMultisigCreationComplete = (config: SuiMultisigConfig) => {
     console.log("Sui Multisig Config Created:", config);
-    alert(`Multisig Address: ${config.multisigAddress}\nConfig saved to console and downloaded.`);
+    setActiveMultisigConfig(config);
+  };
+
+  const handleConfigLoaded = (config: SuiMultisigConfig) => {
+    console.log("Sui Multisig Config Loaded:", config);
+    setActiveMultisigConfig(config);
+  };
+
+  const handleUnloadConfig = () => {
+    setActiveMultisigConfig(null);
   };
 
   return (
@@ -21,7 +36,7 @@ function App() {
         }}
       >
         <Box>
-          <Heading>dApp Starter Template</Heading>
+          <Heading>Sui Multisig Manager</Heading>
         </Box>
 
         <Box>
@@ -36,7 +51,16 @@ function App() {
           style={{ background: "var(--gray-a2)", minHeight: 500 }}
         >
           <WalletStatus />
-          <CreateMultisigFormSui onComplete={handleMultisigCreationComplete} />
+          
+          {activeMultisigConfig ? (
+            <MultisigDashboard config={activeMultisigConfig} onUnloadConfig={handleUnloadConfig} />
+          ) : (
+            <>
+              <CreateMultisigFormSui onComplete={handleMultisigCreationComplete} />
+              <Separator my="4" size="4" />
+              <LoadMultisigConfig onConfigLoaded={handleConfigLoaded} />
+            </>
+          )}
         </Container>
       </Container>
     </>
