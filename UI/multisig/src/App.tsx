@@ -1,8 +1,14 @@
 import { ConnectButton } from "@mysten/dapp-kit";
 import { Box, Container, Flex, Heading } from "@radix-ui/themes";
 import { WalletStatus } from "./WalletStatus";
+import { CreateMultisigFormSui } from "./features/multisig-setup/CreateMultisigFormSui";
 
 function App() {
+  const handleMultisigCreationComplete = (config: any) => {
+    console.log("Sui Multisig Config Created:", config);
+    alert(`Multisig Address: ${config.multisigAddress}\nConfig saved to console and downloaded.`);
+  };
+
   return (
     <>
       <Flex
@@ -30,6 +36,7 @@ function App() {
           style={{ background: "var(--gray-a2)", minHeight: 500 }}
         >
           <WalletStatus />
+          <CreateMultisigFormSui onComplete={handleMultisigCreationComplete} />
         </Container>
       </Container>
     </>
