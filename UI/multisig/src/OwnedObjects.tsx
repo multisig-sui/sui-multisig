@@ -1,9 +1,9 @@
-import { useCurrentAccount, useIotaClientQuery } from "@iota/dapp-kit";
+import { useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit";
 import { Flex, Heading, Text } from "@radix-ui/themes";
 
 export function OwnedObjects() {
   const account = useCurrentAccount();
-  const { data, isPending, error } = useIotaClientQuery(
+  const { data, isPending, error } = useSuiClientQuery(
     "getOwnedObjects",
     {
       owner: account?.address as string,

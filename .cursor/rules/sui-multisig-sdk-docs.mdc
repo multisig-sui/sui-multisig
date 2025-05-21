@@ -1,0 +1,220 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Sui Multisig Documentation
+
+## Multisig Overview (from Sui Docs)
+
+Sui supports multi-signature (multisig) transactions, which require multiple keys for authorization rather than a single, one-key signature. In technical terms, Sui supports k out of n multisig transactions, where k is the threshold and n is the total weights of all participating parties. The maximum number of parties is 10. To learn more about the single key signatures that Sui supports, see Signatures.
+
+Valid participating keys for multisig are Pure Ed25519, ECDSA Secp256k1, and ECDSA Secp256r1. A (u8) weight is set for each participating keys and the threshold can be set as u16. If the serialized multisig contains enough valid signatures of which the sum of weights passes the threshold, Sui considers the multisig valid and the transaction executes.
+
+### Applications of multisig
+Sui allows you to mix and match key schemes in a single multisig account. For example, you can pick a single Ed25519 mnemonic-based key and two ECDSA secp256r1 keys to create a multisig account that always requires the Ed25519 key, but also one of the ECDSA secp256r1 keys to sign. You could use this structure for mobile secure enclave stored keys as two-factor authentication.
+
+**Info:** Currently, iPhone and high-end Android devices support only ECDSA secp256r1 enclave-stored keys.
+
+Compared to threshold signatures, a multisig account is generally more flexible and straightforward to implement and use, without requiring complex multi-party computation (MPC) account setup ceremonies and related software, and any dependency in threshold crypto providers. Additionally, apart from the ability to mix and match key schemes and setting different weights for each key (which is complex in threshold cryptography), multisig accounts are "accountable" and "transparent" by design because both participating parties and observers can see who signed each transaction. On the other hand, threshold signatures provide the benefits of hiding the threshold policy, but also resulting in a single signature payload, making it indistinguishable from a single-key account.
+
+Supported structures in Sui multisig Multisig structures supported in Sui.
+
+### Related links
+Multisig Authentication: Guide on how to create a multisig transaction.
+
+## Multisig Authentication (CLI Guide - Excerpt)
+
+The following steps demonstrate how to create a multisig transaction and then submit it against a network using the Sui CLI.
+
+To learn more about how to create multisig addresses and create multisig transactions using the TypeScript SDK, see the SDK documentation for details.
+
+### Prerequisites
+This topic assumes you are somewhat familiar with the Sui CLI, specifically the `sui client` and `sui keytool` commands.
+You need an existing address on the network you are working on to receive an object.
+The topic also assumes that your active environment is Testnet (`sui client active-env`).
+
+### Executing multisig transactions
+To demonstrate multisig, this topic guides you through setting up and executing a multisig transaction using the Sui CLI.
+
+#### Create addresses with different schemes
+Use the `sui client new-address` command to generate a Sui address and public key for three supported key schemes.
+`$ sui client new-address ed25519`
+`$ sui client new-address secp256k1`
+`$ sui client new-address secp256r1`
+
+Set shell variables for these addresses:
+`$ ADDRESS1=<SUI-ADDRESS-ED25519>`
+`$ ADDRESS2=<SUI-ADDRESS-SECP256K1>`
+`$ ADDRESS3=<SUI-ADDRESS-SECP256R1>`
+`$ ACTIVE=<ACTIVE-ADDRESS>`
+
+#### Verify addresses
+Use `sui keytool list`. The output includes public key data. Create shell variables for public keys:
+`$ PKEY_1=<PUBLIC-KEY-ED25519>`
+`$ PKEY_2=<PUBLIC-KEY-SECP256K1>`
+`$ PKEY_3=<PUBLIC-KEY-SECP256R1>`
+
+#### Create a multisig address
+Use `sui keytool multi-sig-address`. Each address is assigned a weight. The sum of weights of included signatures must be >= threshold.
+`$ sui keytool multi-sig-address --pks $PKEY_1 $PKEY_2 $PKEY_3 --weights 1 2 3 --threshold 3`
+Response includes `<MULTISIG-ADDRESS>`.
+
+#### Add SUI to the multisig address
+Set `$ MULTISIG=<MULTISIG-ADDRESS>`.
+Use `sui client faucet --address $MULTISIG`.
+Verify with `sui client gas $MULTISIG`.
+
+#### Transfer SUI to your active address
+Set `$ COIN=<COIN-OBJECT-ID>`.
+Use `sui client transfer --to $ACTIVE --object-id $COIN --serialize-unsigned-transaction`.
+Response is `<TX-BYTES-RESULT>`. Set `$ TXBYTES=<TX-BYTES-RESULT>`.
+
+#### Sign the transaction with two public keys
+Use `sui keytool sign --address $ADDRESS1 --data $TXBYTES`.
+Repeat for `$ADDRESS2`.
+Response includes `<SIGNATURE-HASH>`. Set `$ SIG_1=<SIGNATURE-HASH-ED25519>` and `$ SIG_2=<SIGNATURE-HASH-SECP256K1>`.
+
+#### Combine individual signatures into a multisig
+Use `sui keytool multi-sig-combine-partial-sig --pks $PKEY_1 $PKEY_2 $PKEY_3 --weights 1 2 3 --threshold 3 --sigs $SIG_1 $SIG_2`.
+Response includes `<MULTISIG-SERIALIZED-HASH>`.
+
+#### Execute the transaction
+Set `$ MULTISIG_SERIALIZED=<MULTISIG-SERIALIZED-HASH>`.
+Use `sui client execute-signed-tx --tx-bytes $TXBYTES --signatures $MULTISIG_SERIALIZED`.
+
+## Multi-Signature Transactions (TypeScript SDK)
+
+The Sui TypeScript SDK provides a `MultiSigPublicKey` class to support Multi-Signature (MultiSig) transaction and personal message signing. This class implements the same interface as the `PublicKey` classes that Keypairs uses and you call the same methods to verify signatures for `PersonalMessages` and `Transactions`.
+
+### Creating a MultiSigPublicKey
+To create a `MultiSigPublicKey`, you provide a `threshold` (u16) value and an array of objects that contain `publicKey` and `weight` (u8) values. If the combined weight of valid signatures for a transaction is equal to or greater than the threshold value, then the Sui network considers the transaction valid.
+
+```typescript
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { MultiSigPublicKey } from '@mysten/sui/multisig';
+ 
+const kp1 = new Ed25519Keypair();
+const kp2 = new Ed25519Keypair();
+const kp3 = new Ed25519Keypair();
+ 
+const multiSigPublicKey = MultiSigPublicKey.fromPublicKeys({
+	threshold: 2,
+	publicKeys: [
+		{
+			publicKey: kp1.getPublicKey(),
+			weight: 1,
+		},
+		{
+			publicKey: kp2.getPublicKey(),
+			weight: 1,
+		},
+		{
+			publicKey: kp3.getPublicKey(),
+			weight: 2,
+		},
+	],
+});
+ 
+const multisigAddress = multiSigPublicKey.toSuiAddress();
+```
+The `multiSigPublicKey` in the preceding code enables you to verify that signatures have a combined weight of at least 2. A signature signed with only `kp1` or `kp2` is not valid, but a signature signed with both `kp1` and `kp2`, or just `kp3` is valid.
+
+### Combining signatures with a MultiSigPublicKey
+To sign a message or transaction for a MultiSig address, you must collect signatures from the individual key pairs, and then combine them into a signature using the `MultiSigPublicKey` class for the address.
+
+```typescript
+// This example uses the same imports, key pairs, and multiSigPublicKey from the previous example
+const message = new TextEncoder().encode('hello world');
+ 
+const signature1 = (await kp1.signPersonalMessage(message)).signature;
+const signature2 = (await kp2.signPersonalMessage(message)).signature;
+ 
+const combinedSignature = multiSigPublicKey.combinePartialSignatures([signature1, signature2]);
+ 
+const isValid = await multiSigPublicKey.verifyPersonalMessage(message, combinedSignature);
+```
+
+### Creating a MultiSigSigner
+The `MultiSigSigner` class allows you to create a `Signer` that can be used to sign personal messages and `Transactions` like any other keypair or signer class. This is often easier than manually combining signatures, since many methods accept `Signers` and handle signing directly.
+
+A `MultiSigSigner` is created by providing the underlying `Signers` to the `getSigner` method on the `MultiSigPublicKey`. You can provide a subset of the `Signers` that make up the public key, so long as their combined weight is equal to or greater than the threshold.
+
+```typescript
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { MultiSigPublicKey } from '@mysten/sui/multisig';
+ 
+const kp1 = new Ed25519Keypair();
+const kp2 = new Ed25519Keypair();
+ 
+const multiSigPublicKey = MultiSigPublicKey.fromPublicKeys({
+	threshold: 1,
+	publicKeys: [
+		{
+			publicKey: kp1.getPublicKey(),
+			weight: 1,
+		},
+		{
+			publicKey: kp2.getPublicKey(),
+			weight: 1,
+		},
+	],
+});
+ 
+const signer = multiSigPublicKey.getSigner(kp1);
+ 
+const message = new TextEncoder().encode('hello world');
+const { signature } = await signer.signPersonalMessage(message);
+const isValid = await multiSigPublicKey.verifyPersonalMessage(message, signature);
+```
+
+### Multisig with zkLogin
+You can use zkLogin to participate in multisig just like keys for other signature schemes. Unlike other keys that come with a public key, you define a public identifier for zkLogin.
+
+```typescript
+// a single Ed25519 keypair and its public key.
+const kp1 = new Ed25519Keypair();
+const pkSingle = kp1.getPublicKey();
+ 
+// compute the address seed based on user salt and jwt token values.
+const decodedJWT = decodeJwt('a valid jwt token here');
+const userSalt = BigInt('123'); // a valid user salt
+const addressSeed = genAddressSeed(userSalt, 'sub', decodedJWT.sub, decodedJWT.aud).toString();
+ 
+// a zkLogin public identifier derived from an address seed and an iss string.
+let pkZklogin = toZkLoginPublicIdentifier(addressSeed, decodedJWT.iss);
+ 
+// derive multisig address from multisig public key defined by the single key and zkLogin public
+// identifier with weight and threshold.
+const multiSigPublicKey = MultiSigPublicKey.fromPublicKeys({
+	threshold: 1,
+	publicKeys: [
+		{ publicKey: pkSingle, weight: 1 },
+		{ publicKey: pkZklogin, weight: 1 },
+	],
+});
+ 
+// this is the sender of any transactions from this multisig account.
+const multisigAddress = multiSigPublicKey.toSuiAddress();
+ 
+// create a regular zklogin signature from the zkproof and ephemeral signature for zkLogin.
+// see zklogin-integration.mdx for more details.
+const zkLoginSig = getZkLoginSignature({
+	inputs: zkLoginInputs,
+	maxEpoch: '2',
+	userSignature: fromBase64(ephemeralSig),
+});
+ 
+// a valid multisig with just the zklogin signature.
+const multisig = multiSigPublicKey.combinePartialSignatures([zkLoginSig]);
+```
+
+### Benefits and Design for zkLogin in Multisig
+Because zkLogin assumes the application client ID and its issuer (such as Google) liveliness, using zkLogin with multisig provides improved recoverability to a zkLogin account. This also opens the door to design multisig across any number of zkLogin accounts and of different providers (max number is capped at 10 accounts) with customizable weights and thresholds.
+
+## Sui CLI Overview
+
+Sui provides a command line interface (CLI) tool to interact with the Sui network.
+Key commands: `sui client`, `sui keytool`, `sui move`.
+Ensure Sui CLI is installed (`sui --version`).
+Update with `cargo install --locked --git https://github.com/MystenLabs/sui.git --branch <BRANCH-NAME> --features tracing sui`.
