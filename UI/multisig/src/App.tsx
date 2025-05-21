@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { ConnectButton } from "@mysten/dapp-kit";
-import { Box, Container, Flex, Heading, Separator } from "@radix-ui/themes";
+import { ConnectButton, useCurrentAccount } from "@mysten/dapp-kit";
+import { Box, Container, Flex, Heading, Separator, Text } from "@radix-ui/themes";
 import { WalletStatus } from "./WalletStatus";
 import { CreateMultisigFormSui } from "./features/multisig-setup/CreateMultisigFormSui";
 import { LoadMultisigConfig } from './features/multisig-manage/LoadMultisigConfig';
 import { MultisigDashboard } from './features/multisig-manage/MultisigDashboard';
 import { SuiMultisigConfig } from './types';
+import { FaucetButton } from './components/FaucetButton';
 
 function App() {
   const [activeMultisigConfig, setActiveMultisigConfig] = useState<SuiMultisigConfig | null>(null);
+  const currentAccount = useCurrentAccount();
 
   const handleMultisigCreationComplete = (config: SuiMultisigConfig) => {
     console.log("Sui Multisig Config Created:", config);
@@ -52,6 +54,12 @@ function App() {
         >
           <WalletStatus />
           
+          {currentAccount && (
+            <Flex direction="column" gap="2" my="3" align="start">
+                <FaucetButton onSuccess={() => console.log('Faucet request for connected wallet successful')}/>
+            </Flex>
+          )}
+
           {activeMultisigConfig ? (
             <MultisigDashboard config={activeMultisigConfig} onUnloadConfig={handleUnloadConfig} />
           ) : (
