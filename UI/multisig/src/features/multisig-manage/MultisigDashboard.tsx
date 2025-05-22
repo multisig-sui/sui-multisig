@@ -98,9 +98,8 @@ export function MultisigDashboard({ config, onUnloadConfig }: MultisigDashboardP
     return (Number(balanceInMist) / MIST_PER_SUI).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 9 });
   };
 
-  const handleTransactionCreated = (txDigest: string) => {
-    console.log("Transaction created with digest:", txDigest);
-    setShowCreateTxForm(false);
+  const handleTransactionExecuted = (txDigest: string) => {
+    console.log("Transaction executed with digest:", txDigest);
     fetchBalance();
   };
 
@@ -194,7 +193,7 @@ export function MultisigDashboard({ config, onUnloadConfig }: MultisigDashboardP
         {showCreateTxForm ? (
           <CreateTransactionForm 
             multisigConfig={config}
-            onTransactionCreated={handleTransactionCreated}
+            onTransactionExecuted={handleTransactionExecuted}
             onCancel={() => setShowCreateTxForm(false)}
           />
         ) : (
