@@ -143,6 +143,7 @@ export function MultisigDashboard({ config, onUnloadConfig }: MultisigDashboardP
             </Callout.Root>
           )}
           <Box mt="2">
+            {/* The FaucetButton will automatically use the Testnet faucet if the connected wallet is on the Testnet network. */}
             <FaucetButton 
               targetAddress={config.multisigAddress} 
               onSuccess={fetchBalance}

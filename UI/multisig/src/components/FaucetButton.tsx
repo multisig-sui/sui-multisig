@@ -57,18 +57,33 @@ export function FaucetButton({
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
+    let attemptedFaucetHost: string | null = null;
+
+    // Log the network being targeted by the faucet
+    if (networkForFaucet) {
+      console.log(`FaucetButton: Attempting to request tokens from ${networkForFaucet} faucet for address ${effectiveAddress}`);
+    }
 
     try {
-      const faucetHost: string = getFaucetHost(networkForFaucet);
-      await requestSuiFromFaucetV0({ host: faucetHost, recipient: effectiveAddress });
+      attemptedFaucetHost = getFaucetHost(networkForFaucet);
+      await requestSuiFromFaucetV0({ host: attemptedFaucetHost, recipient: effectiveAddress });
       const shortAddress = `${effectiveAddress.slice(0, 6)}...${effectiveAddress.slice(-4)}`;
-      setSuccessMessage(`Faucet request successful for ${shortAddress}. Tokens may take a moment to arrive.`);
+      setSuccessMessage(`Faucet request to ${networkForFaucet} network successful for ${shortAddress}. Tokens may take a moment to arrive.`);
       if (onSuccess) {
         onSuccess(effectiveAddress);
       }
     } catch (e: any) {
       console.error('Faucet request error:', e);
-      setError(`Faucet error: ${e.message || 'Unknown error'}`);
+      let detailedError = `Faucet error: ${e.message || 'Unknown error'}`;
+      if (e.message && (e.message.toLowerCase().includes('failed to fetch') || e.message.toLowerCase().includes('networkerror'))) {
+        detailedError = 
+          `Failed to connect to the faucet server (${attemptedFaucetHost || 'Unknown host'}). ` +
+          `Please check your internet connection, ensure the ${networkForFaucet || 'selected'} network faucet is operational, ` +
+          `and try again later. You might also be rate-limited.`;
+      } else if (attemptedFaucetHost) {
+        detailedError += ` (Attempted host: ${attemptedFaucetHost})`;
+      }
+      setError(detailedError);
     } finally {
       setIsLoading(false);
     }

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { ConnectButton, useCurrentAccount } from "@mysten/dapp-kit";
-import { Box, Container, Flex, Heading, Separator, Text, Code, Button, Callout } from "@radix-ui/themes";
+import { useState, useEffect, useCallback } from 'react';
+import { ConnectButton, useCurrentAccount, useSuiClient } from "@mysten/dapp-kit";
+import { Box, Container, Flex, Heading, Separator, Text, Code, Button, Callout, Strong } from "@radix-ui/themes";
 import { WalletStatus } from "./WalletStatus";
 import { CreateMultisigFormSui } from "./features/multisig-setup/CreateMultisigFormSui";
 import { LoadMultisigConfig } from './features/multisig-manage/LoadMultisigConfig';
@@ -8,7 +8,11 @@ import { MultisigDashboard } from './features/multisig-manage/MultisigDashboard'
 import { SuiMultisigConfig } from './types';
 import { FaucetButton } from './components/FaucetButton';
 import { toB64 } from '@mysten/sui/utils';
-import { CopyIcon, CheckCircledIcon } from '@radix-ui/react-icons';
+import { CopyIcon, CheckCircledIcon, ReloadIcon, InfoCircledIcon } from '@radix-ui/react-icons';
+import { CoinBalance } from '@mysten/sui/client';
+
+const SUI_COIN_TYPE = '0x2::sui::SUI';
+const MIST_PER_SUI = 1_000_000_000;
 
 // Helper to get the flag byte for a given public key signature scheme
 function getFlagForKeyScheme(scheme: 'ED25519' | 'Secp256k1' | 'Secp256r1' | string): number {
@@ -23,8 +27,52 @@ function getFlagForKeyScheme(scheme: 'ED25519' | 'Secp256k1' | 'Secp256r1' | str
 function App() {
   const [activeMultisigConfig, setActiveMultisigConfig] = useState<SuiMultisigConfig | null>(null);
   const currentAccount = useCurrentAccount();
+  const suiClient = useSuiClient();
   const [formattedPublicKey, setFormattedPublicKey] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
+
+  const [walletBalance, setWalletBalance] = useState<CoinBalance | null>(null);
+  const [isLoadingWalletBalance, setIsLoadingWalletBalance] = useState<boolean>(false);
+  const [walletBalanceError, setWalletBalanceError] = useState<string | null>(null);
+
+  const formatBalance = (totalBalance: string) => {
+    const balanceInMist = BigInt(totalBalance);
+    return (Number(balanceInMist) / MIST_PER_SUI).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 9 });
+  };
+
+  const fetchWalletBalance = useCallback(async () => {
+    if (!currentAccount?.address) {
+      setWalletBalance(null);
+      setWalletBalanceError(null);
+      return;
+    }
+    setIsLoadingWalletBalance(true);
+    setWalletBalanceError(null);
+    try {
+      const coinBalance = await suiClient.getBalance({
+        owner: currentAccount.address,
+        coinType: SUI_COIN_TYPE,
+      });
+      setWalletBalance(coinBalance);
+    } catch (error: any) {
+      console.error("Error fetching wallet balance:", error);
+      setWalletBalanceError(`Failed to fetch balance: ${error.message}`);
+      setWalletBalance(null);
+    } finally {
+      setIsLoadingWalletBalance(false);
+    }
+  }, [suiClient, currentAccount?.address]);
+
+  useEffect(() => {
+    if (currentAccount?.address) {
+      fetchWalletBalance();
+    } else {
+      // Clear balance if account disconnects
+      setWalletBalance(null);
+      setIsLoadingWalletBalance(false);
+      setWalletBalanceError(null);
+    }
+  }, [currentAccount?.address, fetchWalletBalance]);
 
   useEffect(() => {
     if (currentAccount && currentAccount.publicKey) {
@@ -156,7 +204,41 @@ function App() {
                             <Callout.Text>{formattedPublicKey}</Callout.Text>
                         </Callout.Root>
                     )}
-                    <FaucetButton onSuccess={() => console.log('Faucet request for connected wallet successful')}/>
+                    <Separator my="2" size="4" />
+
+                    <Flex direction="column" gap="1" align="start" mb="1">
+                        <Flex justify="between" align="center" style={{width: '100%'}}>
+                            <Text size="2" weight="bold">SUI Balance:</Text>
+                            <Flex align="center" gap="2">
+                                {isLoadingWalletBalance ? (
+                                    <Text size="2" color="gray">Loading...</Text>
+                                ) : walletBalanceError ? (
+                                    <Text size="2" color="red" title={walletBalanceError}>Error</Text>
+                                ) : walletBalance ? (
+                                    <Strong>{formatBalance(walletBalance.totalBalance)} SUI</Strong>
+                                ) : (
+                                    <Text size="2" color="gray">N/A</Text>
+                                )}
+                                <Button size="1" variant="soft" onClick={fetchWalletBalance} disabled={isLoadingWalletBalance || !currentAccount?.address} title="Refresh Balance">
+                                    <ReloadIcon />
+                                </Button>
+                            </Flex>
+                        </Flex>
+                        {walletBalanceError && (
+                            <Callout.Root color="red" size="1" mt="1">
+                                <Callout.Icon><InfoCircledIcon/></Callout.Icon>
+                                <Callout.Text>{walletBalanceError}</Callout.Text>
+                            </Callout.Root>
+                        )}
+                    </Flex>
+                    
+                    <Separator my="2" size="4" />
+
+                    {/* The FaucetButton will automatically use the Testnet faucet if the connected wallet is on the Testnet network. */}
+                    <FaucetButton onSuccess={() => {
+                        console.log('Faucet request for connected wallet successful');
+                        fetchWalletBalance(); // Refresh balance after successful faucet request
+                    }}/>
                 </Flex>
             </Box>
           )}
