@@ -24,6 +24,9 @@ node_modules/
 /multisig-web-client/.vite/
 /multisig-web-client/coverage/
 
+# New UI build output
+/UI/multisig/dist/
+
 # Environment variables
 .env
 .env.*

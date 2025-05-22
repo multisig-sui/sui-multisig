@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Box, Button, Card, Flex, Heading, Text, TextField, Callout, Strong, TextArea, Code, Badge, Separator } from '@radix-ui/themes';
 import { InfoCircledIcon, CheckCircledIcon, CopyIcon, PlusIcon, CrossCircledIcon, ExternalLinkIcon } from '@radix-ui/react-icons';
-import { SuiMultisigConfig, SuiSigner, SuiKeyScheme } from '../../types';
+import { SuiMultisigConfig, SuiKeyScheme } from '../../types';
 import { useSuiClient, useCurrentAccount, useSignTransaction } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { fromB64, toB64 } from '@mysten/sui/utils';
@@ -407,7 +407,7 @@ export function CreateTransactionForm({ multisigConfig, onTransactionExecuted, o
       ) : (
         <Box>
             <Heading size="3" mb="2">1. Transaction Payload (Serialized)</Heading>
-            <TextArea readOnly value={transactionPayload} rows={5} style={{ fontFamily: 'monospace', wordBreak: 'break-all'}} onClick={(e) => { navigator.clipboard.writeText(transactionPayload); setCopySuccess('Payload copied!'); setTimeout(()=>setCopySuccess(null), 2000);}}/>
+            <TextArea readOnly value={transactionPayload} rows={5} style={{ fontFamily: 'monospace', wordBreak: 'break-all'}} onClick={() => { navigator.clipboard.writeText(transactionPayload!); setCopySuccess('Payload copied!'); setTimeout(()=>setCopySuccess(null), 2000);}}/>
             <Text size="1" color="gray" mt="1">This is the serialized transaction data (base64 encoded) that needs to be signed. Click to copy.</Text>
             {copySuccess === 'Payload copied!' && <Text size="1" color="green" ml="2"><CheckCircledIcon/> Copied!</Text>}
             

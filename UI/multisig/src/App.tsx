@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ConnectButton, useCurrentAccount } from "@mysten/dapp-kit";
 import { Box, Container, Flex, Heading, Separator, Text, Code, Button, Callout } from "@radix-ui/themes";
 import { WalletStatus } from "./WalletStatus";

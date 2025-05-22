@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Button, Text, Flex, Callout, Box } from '@radix-ui/themes';
+import { useState, useCallback, useEffect } from 'react';
+import { Button, Text, Callout, Box } from '@radix-ui/themes';
 import { ReloadIcon, InfoCircledIcon, PaperPlaneIcon } from '@radix-ui/react-icons';
 import { useCurrentAccount, useSuiClientContext } from '@mysten/dapp-kit';
 import { getFaucetHost, requestSuiFromFaucetV0 } from '@mysten/sui/faucet';
