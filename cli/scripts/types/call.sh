@@ -142,38 +142,55 @@ select_function() {
 # Function to prompt for function arguments
 prompt_arguments() {
     # Extract function parameters
-    FUNCTION_DEF=$(echo "$MODULE_CONTENT" | grep -A 10 "entry public $FUNCTION_NAME")
-    # Extract parameters but ignore &mut TxContext
-    PARAMS=$(echo "$FUNCTION_DEF" | grep -o "Arg[0-9]*: [^,)]*" | sed 's/Arg[0-9]*: //' | grep -v "&mut TxContext")
+    # echo "$PACKAGE_OBJECT" | jq -r 'keys[]'
+
+    # Get module content with better error handling
+    MODULE_CONTENT=$(echo "$PACKAGE_OBJECT" | jq -r ".content.disassembled.\"$MODULE_NAME\"")
+    if [ -z "$MODULE_CONTENT" ] || [ "$MODULE_CONTENT" = "null" ]; then
+        echo "❌ Failed to extract module content. Available modules:"
+        echo "$PACKAGE_OBJECT" | jq -r '.content.disassembled | keys[]'
+        exit 1
+    fi
+
+    # Try different patterns to find the function
+    echo "🔍 Searching for function definition..."
+    FUNCTION_PATTERN="entry public $FUNCTION_NAME"
+    FUNCTION_LINE=$(echo "$MODULE_CONTENT" | grep -n "$FUNCTION_PATTERN" | cut -d: -f1)
+
+    if [ -n "$FUNCTION_LINE" ]; then
+        echo "📍 Found function at line $FUNCTION_LINE"
+        # Get the function definition and the next few lines for context
+        CONTEXT_LINES=$(echo "$MODULE_CONTENT" | tail -n "+$FUNCTION_LINE" | head -n 5)
+
+        # Extract parameters with a more flexible pattern - only get unique parameters
+        FUNCTION_DEF=$(echo "$CONTEXT_LINES" | grep -o "Arg[0-9]*: [^,)]*" | sort -u | sed 's/Arg[0-9]*: //')
+
+    else
+        echo "❌ Could not find function pattern: $FUNCTION_PATTERN"
+        echo "Available functions:"
+        echo "$MODULE_CONTENT" | grep "entry public"
+        exit 1
+    fi
 
     # Initialize arguments array
     ARGS=()
 
-    # Process each parameter
-    if [ -n "$PARAMS" ]; then
+    # Process parameters
+    if [ -n "$FUNCTION_DEF" ]; then
         echo "📝 Please provide arguments for the function:"
-        param_num=1
-        while IFS= read -r param_type; do
-            # Skip empty lines and &signer parameter
-            if [ -z "$param_type" ] || [ "$param_type" = "&signer" ]; then
+
+        # Read parameters into an array
+        readarray -t params <<< "$FUNCTION_DEF"
+
+        # Process each parameter
+        for param_type in "${params[@]}"; do
+            # Skip empty lines and TxContext
+            if [ -z "$param_type" ] || [[ "$param_type" == *"TxContext"* ]]; then
                 continue
             fi
 
-            # Clean up the parameter type display
-            display_type=$(echo "$param_type" | sed 's/&mut //' | sed 's/&//')
-            echo "Parameter $param_num: $display_type"
-
-            # Check if this is an Option type
-            if [[ "$param_type" == *"option::Option<"* ]]; then
-                read -p "Enter value (leave empty for None): " param_value
-
-                # If empty, use [] to represent None
-                if [ -z "$param_value" ]; then
-                    param_value="[]"
-                fi
-            else
-                read -p "Enter value: " param_value
-            fi
+            echo "Parameter: $param_type"
+            read -p "Enter value: " param_value
 
             # Allow quitting
             if [ "$param_value" = "q" ]; then
@@ -182,8 +199,7 @@ prompt_arguments() {
             fi
 
             ARGS+=("$param_value")
-            ((param_num++))
-        done <<< "$PARAMS"
+        done
     else
         echo "ℹ️  Function takes no parameters (excluding &mut TxContext)"
     fi
