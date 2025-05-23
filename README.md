@@ -2,12 +2,12 @@
 
 ![logo](/assets/logo.png)
 
+In the wake of recent incidents like the [SafeWallet frontend compromise](https://x.com/safe/status/1894768522720350673), it's become clear that many multisig platforms expose users to unnecessary risk. External frontends and tools can be tampered with, and users often can't verify what they're signing. This project aims to fix that by introducing open-source solutions that can be run locally.
+
 This repository contains a comprehensive suite of tools for managing multisig operations on the Sui blockchain using a **security-by-design** approach. The project consists of two main components:
 
 1. **CLI Tool** - For command-line multisig operations (aimed at developers)
 2. **Web Frontend** - For visual transaction management (aimed at non-technical users)
-
-In the wake of recent incidents like the [SafeWallet frontend compromise](https://x.com/safe/status/1894768522720350673), it's become clear that many multisig platforms expose users to unnecessary risk. External frontends and tools can be tampered with, and users often can't verify what they're signing. This project aims to fix that by introducing open-source solutions that can be run locally.
 
 ## 🔐 Security Features
 
@@ -18,12 +18,38 @@ In the wake of recent incidents like the [SafeWallet frontend compromise](https:
 ## 🛠️ Tools Overview
 
 ### CLI Tool
-- Deploy and upgrade packages with ease
-- Ideal for power users and developers
-- Full control over transaction creation and signing
+The CLI tool provides a powerful command-line interface for managing Sui multisig operations. It's designed for developers and power users who prefer working in the terminal.
+
+**Key Features:**
+- **Create Multisig Wallets:** Set up new multisig wallets with custom weights and thresholds
+- **Transaction Management:**
+  - Create and manage transactions (publish, upgrade, call, transfer)
+  - View transaction details before signing
+  - Collect signatures from multiple signers
+  - Execute approved transactions
+- **Local Configuration:** All configurations and transactions are stored locally
+- **Developer-Friendly:** Full control over transaction creation and signing
+
+👉 **[Try the CLI tool](https://www.npmjs.com/package/sui-multisig-cli)**
+
+#### Installation
+Install the CLI tool globally using npm or pnpm:
+
+```bash
+# Using npm
+npm install -g sui-multisig-cli
+
+# Using pnpm
+pnpm add -g sui-multisig-cli
+```
+
+For detailed CLI usage instructions, see the [CLI documentation](cli/README.md).
+
+> **Note:** If you prefer using the original bash scripts directly (as shown in the [demo video](https://youtu.be/GX_vhvUv8ks)), see the [Bash Scripts documentation](docs/bash-scripts.md).
+
 
 ### Web Frontend
-The web frontend provides an intuitive, 100% client-side interface for managing Sui multisig wallets. It runs entirely in your browser with no backend server, enhancing security by ensuring your keys and transaction data are not exposed to external servers. It's designed to complement the CLI tool, offering a visual approach for users who prefer a graphical interface.
+The web frontend provides an intuitive, 100% client-side interface for managing Sui multisig wallets. It runs entirely in your browser with no backend server, enhancing security by ensuring your keys and transaction data are not exposed to external servers.
 
 **Key Features:**
 - **Create Multisig Wallets:** Easily set up new multisig wallets by defining signers (with their public keys and key schemes), their respective weights, and the signature threshold required for transaction approval.
@@ -49,15 +75,15 @@ The web frontend is a React application built using Vite, TypeScript, and Radix 
 - [pnpm](https://pnpm.io/) (Follow installation guide on their website if not already installed)
 
 **Setup and Running:**
-1.  Navigate to the frontend's directory:
+1. Navigate to the frontend's directory:
     ```bash
     cd UI/multisig
     ```
-2.  Install dependencies:
+2. Install dependencies:
     ```bash
     pnpm install
     ```
-3.  Start the local development server:
+3. Start the local development server:
     ```bash
     pnpm dev
     ```
@@ -65,30 +91,12 @@ The web frontend is a React application built using Vite, TypeScript, and Radix 
 
 **Building for Production:**
 To create an optimized production build of the frontend:
-1.  Ensure you are in the `UI/multisig` directory.
-2.  Run the build command:
+1. Ensure you are in the `UI/multisig` directory.
+2. Run the build command:
     ```bash
     pnpm build
     ```
     The static files for deployment will be generated in the `UI/multisig/dist` directory.
-
-## Using the CLI tool
-
-### Installation
-
-Install the CLI tool globally using npm or pnpm:
-
-```bash
-# Using npm
-npm install -g @sui-multisig/cli
-
-# Using pnpm
-pnpm add -g @sui-multisig/cli
-```
-
-For detailed CLI usage instructions, see the [CLI documentation](cli/README.md).
-
-> **Note:** If you prefer using the original bash scripts directly (as shown in the [demo video](https://youtu.be/GX_vhvUv8ks)), see the [Bash Scripts documentation](docs/bash-scripts.md).
 
 ## Prerequisites
 
@@ -97,6 +105,8 @@ For detailed CLI usage instructions, see the [CLI documentation](cli/README.md).
 - jq (for JSON processing)
 
 __NOTE: To use this tool you must use the [custom fork](https://github.com/arjanjohan/sui/tree/custom-signer) of the Sui CLI. This custom fork allows to create a transaction with a custom signer (i.e. the multisig wallet). We created a PR (https://github.com/MystenLabs/sui/pull/22158) to add this new feature to the next version of the Sui CLI.__
+
+> **Note:** If you prefer using the original bash scripts directly (as shown in the [demo video](https://youtu.be/GX_vhvUv8ks)), see the [Bash Scripts documentation](docs/bash-scripts.md).
 
 ## Next steps
 

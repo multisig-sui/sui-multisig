@@ -1,6 +1,6 @@
 # Using Bash Scripts Directly
 
-This document contains the original instructions for using the bash scripts directly. These instructions were used in the [demo video](https://youtu.be/GX_vhvUv8ks). After this we upgraded the CLI tool to a newer version that can be installed with npm.
+This document contains the original instructions for using the bash scripts directly. These instructions were used in the [demo video](https://youtu.be/GX_vhvUv8ks). After this video we upgraded the CLI tool to a newer version that can be installed with npm.
 
 ## Prerequisites
 
