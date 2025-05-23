@@ -12,13 +12,11 @@ __NOTE: To use this tool you must use the [custom fork](https://github.com/arjan
 
 ## Initial setup
 
-Before you start you must initialize some accounts and a multisig.
+Before you start you must initialize the Sui CLI, connected to a Sui Full node (`sui client new-env`) and create some accounts (`sui client new-address <KEY_SCHEME>`). Instructions and more details can be found [here](https://docs.sui.io/references/cli/client).
 
 ## Scripts
 
 ### 0. Setup Multisig Wallet
-
-First, ensure you have initialized the Sui CLI and connected to a Sui Full node. Instructions and more details can be found [here](https://docs.sui.io/references/cli/client).
 
 ```bash
 bash ./scripts/0_setup_multisig.sh

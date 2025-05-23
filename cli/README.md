@@ -12,13 +12,11 @@ __NOTE: To use this tool you must use the [custom fork](https://github.com/arjan
 
 ## Initial setup
 
-Before you start you must initialize some accounts and a multisig.
+Before you start you must initialize the Sui CLI, connected to a Sui Full node (`sui client new-env`) and create some accounts (`sui client new-address <KEY_SCHEME>`). Instructions and more details can be found [here](https://docs.sui.io/references/cli/client).
 
 ## Scripts
 
 ### 0. Setup Multisig Wallet
-
-First, ensure you have initialized the Sui CLI and connected to a Sui Full node. Instructions and more details can be found [here](https://docs.sui.io/references/cli/client).
 
 ```bash
 sui-multisig setup
@@ -93,5 +91,3 @@ Executes the next transaction in the multisig queue, given that is has sufficien
 
 To learn more about how multisigs work on Sui check out these resources:
 - [Sui Developer docs](https://docs.sui.io/concepts/cryptography/transaction-auth/multisig)
-- [Demo video](https://youtu.be/GX_vhvUv8ks)
-- [Pitchdeck](https://docs.google.com/presentation/d/1h-x2YUOr8FiCrCc1weWM6xX1A-5ekZF8Z5Fn9xboOUE/edit?usp=sharing)
