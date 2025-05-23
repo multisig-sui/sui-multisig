@@ -87,19 +87,23 @@ while IFS= read -r line; do
 done < <(echo "$ADDRESSES_JSON" | jq -r '.addresses[] | "\(.[0])|\(.[1])"')
 echo "------------------------"
 
-# Prompt for address selection
-read -p "Enter address name to use (or press enter for active address): " ADDR_NAME
+# Prompt for address selection with retry loop
+while true; do
+    read -p "Enter address name to use (or press enter for active address): " ADDR_NAME
 
-if [ -z "$ADDR_NAME" ]; then
-    SIGNER_ADDRESS="$ACTIVE_ADDRESS"
-else
+    if [ -z "$ADDR_NAME" ]; then
+        SIGNER_ADDRESS="$ACTIVE_ADDRESS"
+        break
+    fi
+
     # Find address by name
     SIGNER_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r --arg name "$ADDR_NAME" '.addresses[] | select(.[0] == $name) | .[1]')
     if [ -z "$SIGNER_ADDRESS" ] || [ "$SIGNER_ADDRESS" = "null" ]; then
-        echo "Error: Address name not found"
-        exit 1
+        echo "❌ Error: Address name not found. Please enter the exact address name (e.g. 'upbeat-alexandrite')"
+        continue
     fi
-fi
+    break
+done
 
 # Check if signature already exists
 if [ -f "$SIGS_DIR/${SIGNER_ADDRESS#0x}" ]; then
