@@ -31,9 +31,9 @@ In the wake of recent incidents like the [SafeWallet frontend compromise](https:
 
 👉 **[Try the frontend now](https://sui-multisig.vercel.app/)**
 
----
+## Using the CLI
 
-## Prerequisites
+### Prerequisites
 
 - [Sui CLI](https://docs.sui.io/references/cli/client) - *Required: Install this custom fork that matches your target network [ (mainnet)](https://github.com/arjanjohan/sui/tree/custom-signer) - [(testnet-v1.48.2)](https://github.com/arjanjohan/sui/tree/custom-signer-testnet) - [(testnet-v1.48.1)](https://github.com/arjanjohan/sui/tree/custom-signer-testnet-v1.48.1)*
 - Bash shell environment
@@ -42,13 +42,13 @@ In the wake of recent incidents like the [SafeWallet frontend compromise](https:
 __NOTE: To use this tool you must use the [custom fork](https://github.com/arjanjohan/sui/tree/custom-signer) of the Sui CLI. This custom fork allows to create a transaction with a custom signer (i.e. the multisig wallet). We created a PR (https://github.com/MystenLabs/sui/pull/22158) to add this new feature to the next version of the Sui CLI.__
 
 
-## Initial setup
+### Initial setup
 
 Before you start you must initialze some accounts and a multisig.
 
-## Scripts
+### Scripts
 
-### 0. Setup Multisig Wallet
+#### 0. Setup Multisig Wallet
 
 First, ensure you have initialized the Sui CLI and connected to a Sui Full node. Instructions and more details can be found [here](https://docs.sui.io/references/cli/client).
 
@@ -63,7 +63,7 @@ Sets up a multisig wallet with multiple signers. The script will guide you throu
 
 The configuration is saved to a JSON file in the `transactions` directory for future reference.
 
-### 1. Create transaction
+#### 1. Create transaction
 
 ```bash
 bash ./scripts/1_create_tx.sh [options]
@@ -105,7 +105,7 @@ Creates a multisig transaction. The script supports four types of transactions:
 
 If no type is specified, the script will prompt you to select one interactively.
 
-### 2. Approve transaction
+#### 2. Approve transaction
 
 ```bash
 bash ./scripts/2_approve_tx.sh
@@ -113,7 +113,7 @@ bash ./scripts/2_approve_tx.sh
 
 Call this script with the `-- sequence-number <n>` flag to approve/reject a specific transaction. Otherwise it will print an overview of transactions and prompt you to input the sequence number of the one to approve/reject.
 
-### 3. Execute transaction
+#### 3. Execute transaction
 
 ```bash
 bash ./scripts/3_execute_tx.sh
@@ -125,7 +125,6 @@ Executes the next transaction in the multisig queue, given that is has sufficien
 
 To learn more about how multisigs work on Sui check out these resources:
 - [Sui Developer docs](https://docs.sui.io/concepts/cryptography/transaction-auth/multisig)
-
 
 ## Next steps
 
