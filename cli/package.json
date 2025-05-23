@@ -1,0 +1,54 @@
+{
+  "name": "sui-multisig-cli",
+  "version": "1.0.2",
+  "description": "CLI tool for managing Sui multisig operations",
+  "main": "dist/index.js",
+  "type": "commonjs",
+  "bin": {
+    "sui-multisig": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "scripts"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "sui",
+    "blockchain",
+    "multisig",
+    "cli",
+    "crypto",
+    "wallet"
+  ],
+  "author": "arjanjohan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arjanjohan/sui-multisig.git"
+  },
+  "bugs": {
+    "url": "https://github.com/arjanjohan/sui-multisig/issues"
+  },
+  "homepage": "https://github.com/arjanjohan/sui-multisig#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "branch": "cli-tool"
+  }
+}
