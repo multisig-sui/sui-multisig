@@ -23,13 +23,54 @@ In the wake of recent incidents like the [SafeWallet frontend compromise](https:
 - Full control over transaction creation and signing
 
 ### Web Frontend
-- Intuitive interface for transaction management
-- 100% client-side - runs in your browser, no backend server
-- Built to work alongside the CLI, not replace it
-- Delegates signing to trusted Sui browser extension wallets
-- Great for preparing, reviewing, and coordinating transactions visually
+The web frontend provides an intuitive, 100% client-side interface for managing Sui multisig wallets. It runs entirely in your browser with no backend server, enhancing security by ensuring your keys and transaction data are not exposed to external servers. It's designed to complement the CLI tool, offering a visual approach for users who prefer a graphical interface.
 
-👉 **[Try the frontend now](https://sui-multisig.vercel.app/)**
+**Key Features:**
+- **Create Multisig Wallets:** Easily set up new multisig wallets by defining signers (with their public keys and key schemes), their respective weights, and the signature threshold required for transaction approval.
+- **Load Existing Configurations:** Import previously saved multisig wallet configurations from a JSON file.
+- **Dashboard View:** Get a clear overview of your loaded multisig wallet, including its address, SUI balance, threshold, and the list of signers with their details.
+- **Faucet Integration:** Conveniently request SUI tokens from the faucet for your multisig wallet address (primarily for Testnet/Devnet usage).
+- **Transaction Creation & Management:**
+    - Initiate common transactions, such as SUI transfers, directly from the multisig wallet.
+    - View the transaction payload (serialized transaction data) before signing, ensuring transparency.
+- **Signature Collection:**
+    - **Connected Wallet Signing:** If your connected browser wallet is one of the authorized signers, you can sign the transaction directly.
+    - **Offline Signature Aggregation:** Paste signatures (in the required format: `flag || signature_bytes || public_key_bytes`, base64 encoded) obtained from other signers who have signed the transaction payload offline.
+- **Execute Transactions:** Once enough signatures are collected to meet the threshold, combine them and execute the transaction on the Sui network.
+- **Wallet Agnostic:** Leverages `@mysten/dapp-kit` to delegate signing operations to compatible Sui browser extension wallets, keeping your private keys secure within your trusted wallet environment.
+
+👉 **[Try the live demo](https://sui-multisig.vercel.app/)**
+
+#### Running the Frontend Locally
+The web frontend is a React application built using Vite, TypeScript, and Radix UI for components. It uses `@mysten/dapp-kit` for interacting with the Sui blockchain and wallets.
+
+**Prerequisites:**
+- [Node.js](https://nodejs.org/) (LTS version recommended)
+- [pnpm](https://pnpm.io/) (Follow installation guide on their website if not already installed)
+
+**Setup and Running:**
+1.  Navigate to the frontend's directory:
+    ```bash
+    cd UI/multisig
+    ```
+2.  Install dependencies:
+    ```bash
+    pnpm install
+    ```
+3.  Start the local development server:
+    ```bash
+    pnpm dev
+    ```
+    The application will typically be available at `http://localhost:5173` (or the port shown in your terminal).
+
+**Building for Production:**
+To create an optimized production build of the frontend:
+1.  Ensure you are in the `UI/multisig` directory.
+2.  Run the build command:
+    ```bash
+    pnpm build
+    ```
+    The static files for deployment will be generated in the `UI/multisig/dist` directory.
 
 ## Using the CLI
 
