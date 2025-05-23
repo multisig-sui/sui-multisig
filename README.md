@@ -1,27 +1,35 @@
-# Sui Multisig CLI 🛡️
+# Sui Multisig Tools 🛡️
 
 ![logo](/assets/logo.png)
 
-This repository contains tools for managing multisig operations on the Sui blockchain using a **CLI-first** and **security-by-design** approach.
+This repository contains a comprehensive suite of tools for managing multisig operations on the Sui blockchain using a **security-by-design** approach. The project consists of two main components:
+
+1. **CLI Tool** - For command-line multisig operations (aimed at developers)
+2. **Web Frontend** - For visual transaction management (aimed at non-technical users)
 
 In the wake of recent incidents like the [SafeWallet frontend compromise](https://x.com/safe/status/1894768522720350673), it's become clear that many multisig platforms expose users to unnecessary risk. External frontends and tools can be tampered with, and users often can't verify what they're signing. This project aims to fix that by introducing open-source solutions that can be run locally.
 
-## 🔐 Why CLI-First?
+## 🔐 Security Features
 
-- **No Web Risks:** CLI runs locally with no reliance on a web frontend = no spoofing, injection, or DNS attacks.
+- **No Web Risks:** Both tools run locally with no reliance on external servers = no spoofing, injection, or DNS attacks.
 - **Full Verifiability:** You can inspect every transaction before it's signed or sent.
 - **Local Execution:** Your private keys stay with you. Nothing sensitive leaves your machine.
 
-## 🌐 Web Frontend (Optional UI)
+## 🛠️ Tools Overview
 
-For users who prefer a visual experience, we've also built a **frontend companion tool**:
+### CLI Tool
+- Deploy and upgrade packages with ease
+- Ideal for power users and developers
+- Full control over transaction creation and signing
 
-- 100% client-side - runs in your browser, no backend server.
-- Built to work *alongside* the CLI, not replace it.
-- Delegates signing to trusted Sui browser extension wallets (like Sui wallet).
-- Great for preparing, reviewing, and coordinating transactions visually.
+### Web Frontend
+- Intuitive interface for transaction management
+- 100% client-side - runs in your browser, no backend server
+- Built to work alongside the CLI, not replace it
+- Delegates signing to trusted Sui browser extension wallets
+- Great for preparing, reviewing, and coordinating transactions visually
 
-👉 **Try it now:** [TODO](TODO)
+👉 **[Try the frontend now](https://sui-multisig.vercel.app/)**
 
 ---
 
@@ -119,12 +127,13 @@ To learn more about how multisigs work on Sui check out these resources:
 - [Sui Developer docs](https://docs.sui.io/concepts/cryptography/transaction-auth/multisig)
 
 
-## TODO
+## Next steps
 
-- Filter transactions by multisig in step 2
+- [CLI] Filter transactions by multisig in step 2 (approval)
+- [CLI] Add a function to batch execute approved transactions
 
 ## Links
-- [Vercel deployment]()
-- [Demo video]()
+- [Vercel deployment](https://sui-multisig.vercel.app/)
+- [Demo video](https://youtu.be/GX_vhvUv8ks)
 - [Pitchdeck](https://docs.google.com/presentation/d/1h-x2YUOr8FiCrCc1weWM6xX1A-5ekZF8Z5Fn9xboOUE/edit?usp=sharing)
 - [PR to add `--custom-signer` flag to Sui CLI](https://github.com/MystenLabs/sui/pull/22158)
