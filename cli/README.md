@@ -10,6 +10,22 @@ This CLI tool provides a secure way to manage multisig operations on the Sui blo
 
 __NOTE: To use this tool you must use the [custom fork](https://github.com/arjanjohan/sui/tree/custom-signer) of the Sui CLI. This custom fork allows to create a transaction with a custom signer (i.e. the multisig wallet). We created a PR (https://github.com/MystenLabs/sui/pull/22158) to add this new feature to the next version of the Sui CLI.__
 
+## Installation
+
+You can install the Sui Multisig CLI tool globally using npm:
+
+```bash
+npm install -g sui-multisig-cli
+```
+
+Or use it directly with pnpm:
+
+```bash
+pnpm start
+```
+
+In the instructions below we assume you are usint the installed `sui-multisig-cli`.
+
 ## Initial setup
 
 Before you start you must initialize the Sui CLI, connected to a Sui Full node (`sui client new-env`) and create some accounts (`sui client new-address <KEY_SCHEME>`). Instructions and more details can be found [here](https://docs.sui.io/references/cli/client).
@@ -86,6 +102,36 @@ sui-multisig execute
 ```
 
 Executes the next transaction in the multisig queue, given that is has sufficient approvals.
+
+## Configuration
+
+The CLI tool stores its configuration in the `~/.sui-multisig` directory. This includes:
+- Multisig wallet configuration
+- Transaction history
+- Signer information
+
+## Development
+
+To work on the CLI tool:
+
+1. Install dependencies:
+```bash
+pnpm install
+```
+
+2. Build the TypeScript code:
+```bash
+pnpm build
+```
+
+3. Run in development mode:
+```bash
+pnpm dev
+```
+
+## License
+
+MIT
 
 ## Learn more
 

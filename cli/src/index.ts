@@ -3,7 +3,9 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { execSync } from 'child_process';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import { homedir } from 'os';
 
 const program = new Command();
 
@@ -12,13 +14,28 @@ program
   .description('CLI tool for managing Sui multisig operations')
   .version('1.0.0');
 
+// Helper function to get the config directory
+function getConfigDir(): string {
+  const configDir = join(homedir(), '.sui-multisig');
+  if (!existsSync(configDir)) {
+    mkdirSync(configDir, { recursive: true });
+  }
+  return configDir;
+}
+
 // Helper function to run shell scripts
 function runScript(scriptName: string, args: string[] = []): void {
   try {
-    // Get the path to the scripts directory relative to the current file
     const scriptPath = join(__dirname, '..', 'scripts', scriptName);
+
+    // Set environment variables for the scripts
+    const env = {
+      ...process.env,
+      SUI_MULTISIG_CONFIG_DIR: getConfigDir()
+    };
+
     const command = `bash ${scriptPath} ${args.join(' ')}`;
-    execSync(command, { stdio: 'inherit' });
+    execSync(command, { stdio: 'inherit', env });
   } catch (error) {
     console.error(chalk.red(`Error running ${scriptName}:`), error);
     process.exit(1);

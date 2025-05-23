@@ -5,13 +5,12 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/util/transaction_helpers.sh"
 
-# Create required directories
-echo "🔄 Setting up directories..."
-mkdir -p multisigs
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to create multisigs directory"
-    exit 1
-fi
+# Get the config directory from environment variable or use default
+CONFIG_DIR=${SUI_MULTISIG_CONFIG_DIR:-"$HOME/.sui-multisig"}
+TRANSACTIONS_DIR="$CONFIG_DIR/transactions"
+
+# Create directories if they don't exist
+mkdir -p "$TRANSACTIONS_DIR"
 
 # Function to show usage
 show_usage() {
