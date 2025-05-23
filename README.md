@@ -41,9 +41,40 @@ The web frontend provides an intuitive, 100% client-side interface for managing 
 
 👉 **[Try the live demo](https://sui-multisig.vercel.app/)**
 
-## Installation
+#### Running the Frontend Locally
+The web frontend is a React application built using Vite, TypeScript, and Radix UI for components. It uses `@mysten/dapp-kit` for interacting with the Sui blockchain and wallets.
 
-### CLI Tool
+**Prerequisites:**
+- [Node.js](https://nodejs.org/) (LTS version recommended)
+- [pnpm](https://pnpm.io/) (Follow installation guide on their website if not already installed)
+
+**Setup and Running:**
+1.  Navigate to the frontend's directory:
+    ```bash
+    cd UI/multisig
+    ```
+2.  Install dependencies:
+    ```bash
+    pnpm install
+    ```
+3.  Start the local development server:
+    ```bash
+    pnpm dev
+    ```
+    The application will typically be available at `http://localhost:5173` (or the port shown in your terminal).
+
+**Building for Production:**
+To create an optimized production build of the frontend:
+1.  Ensure you are in the `UI/multisig` directory.
+2.  Run the build command:
+    ```bash
+    pnpm build
+    ```
+    The static files for deployment will be generated in the `UI/multisig/dist` directory.
+
+## Using the CLI tool
+
+### Installation
 
 Install the CLI tool globally using npm or pnpm:
 
@@ -58,26 +89,6 @@ pnpm add -g @sui-multisig/cli
 For detailed CLI usage instructions, see the [CLI documentation](cli/README.md).
 
 > **Note:** If you prefer using the original bash scripts directly (as shown in the [demo video](https://youtu.be/GX_vhvUv8ks)), see the [Bash Scripts documentation](docs/bash-scripts.md).
-
-### Web Frontend
-
-The web frontend is available as a hosted application at [sui-multisig.vercel.app](https://sui-multisig.vercel.app/).
-
-To run it locally:
-
-1. Clone this repository
-2. Navigate to the frontend directory:
-   ```bash
-   cd UI/multisig
-   ```
-3. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-4. Start the development server:
-   ```bash
-   pnpm dev
-   ```
 
 ## Prerequisites
 
