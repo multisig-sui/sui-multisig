@@ -52,3 +52,6 @@ tx_*.json
 # Environment variables
 !*.env.example
 .vercel
+
+
+/my_first_package
