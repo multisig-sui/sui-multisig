@@ -36,8 +36,27 @@ function runScript(scriptName: string, args: string[] = []): void {
 
     const command = `bash ${scriptPath} ${args.join(' ')}`;
     execSync(command, { stdio: 'inherit', env });
-  } catch (error) {
-    console.error(chalk.red(`Error running ${scriptName}:`), error);
+  } catch (error: any) {
+    // Extract the actual error message from the script output
+    const errorMessage = error.stderr?.toString() || error.message;
+
+    // Check for common error patterns and provide user-friendly messages
+    if (errorMessage.includes('Not enough signatures')) {
+      console.error(chalk.yellow('\n⚠️  Not enough signatures to execute the transaction.'));
+      console.error(chalk.yellow('   Please have more signers approve the transaction first.'));
+    } else if (errorMessage.includes('No transactions found')) {
+      console.error(chalk.yellow('\n⚠️  No pending transactions found.'));
+      console.error(chalk.yellow('   Create a transaction first using: sui-multisig create'));
+    } else if (errorMessage.includes('No transactions directory found')) {
+      console.error(chalk.yellow('\n⚠️  No transactions directory found.'));
+      console.error(chalk.yellow('   Create a transaction first using: sui-multisig create'));
+    } else {
+      // For other errors, show a generic error message
+      console.error(chalk.red('\n❌ An error occurred:'));
+      console.error(chalk.red(errorMessage));
+    }
+
+    // Exit with status code 1
     process.exit(1);
   }
 }
