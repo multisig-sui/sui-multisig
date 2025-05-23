@@ -57,6 +57,8 @@ pnpm add -g @sui-multisig/cli
 
 For detailed CLI usage instructions, see the [CLI documentation](cli/README.md).
 
+> **Note:** If you prefer using the original bash scripts directly (as shown in the [demo video](https://youtu.be/GX_vhvUv8ks)), see the [Bash Scripts documentation](docs/bash-scripts.md).
+
 ### Web Frontend
 
 The web frontend is available as a hosted application at [sui-multisig.vercel.app](https://sui-multisig.vercel.app/).
@@ -85,8 +87,19 @@ To run it locally:
 
 __NOTE: To use this tool you must use the [custom fork](https://github.com/arjanjohan/sui/tree/custom-signer) of the Sui CLI. This custom fork allows to create a transaction with a custom signer (i.e. the multisig wallet). We created a PR (https://github.com/MystenLabs/sui/pull/22158) to add this new feature to the next version of the Sui CLI.__
 
+## Next steps
+
+- [CLI] Filter transactions by multisig in step 2 (approval)
+- [CLI] Add a function to batch execute approved transactions
+
 ## Learn More
 
+To learn more about how multisigs work on Sui check out these resources:
+- [Sui Developer docs](https://docs.sui.io/concepts/cryptography/transaction-auth/multisig)
+
+## Links
+- [Frontend Vercel deployment](https://sui-multisig.vercel.app/)
+- [NPM package for CLI tool](https://www.npmjs.com/package/sui-multisig-cli)
 - [Demo video](https://youtu.be/GX_vhvUv8ks)
 - [Pitchdeck](https://docs.google.com/presentation/d/1h-x2YUOr8FiCrCc1weWM6xX1A-5ekZF8Z5Fn9xboOUE/edit?usp=sharing)
 - [PR to add `--custom-signer` flag to Sui CLI](https://github.com/MystenLabs/sui/pull/22158)
