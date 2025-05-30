@@ -4,11 +4,11 @@ This CLI tool provides a secure way to manage multisig operations on the Sui blo
 
 ## Prerequisites
 
-- [Sui CLI](https://docs.sui.io/references/cli/client) - *Required: Install this custom fork that matches your target network [ (mainnet)](https://github.com/arjanjohan/sui/tree/custom-signer) - [(testnet-v1.48.2)](https://github.com/arjanjohan/sui/tree/custom-signer-testnet) - [(testnet-v1.48.1)](https://github.com/arjanjohan/sui/tree/custom-signer-testnet-v1.48.1)*
+- [Sui CLI](https://docs.sui.io/references/cli/client) (REQUIRED: install [this custom fork](https://github.com/arjanjohan/sui/tree/override-sender))
 - Bash shell environment
 - jq (for JSON processing)
 
-__NOTE: To use this tool you must use the [custom fork](https://github.com/arjanjohan/sui/tree/custom-signer) of the Sui CLI. This custom fork allows to create a transaction with a custom signer (i.e. the multisig wallet). We created a PR (https://github.com/MystenLabs/sui/pull/22158) to add this new feature to the next version of the Sui CLI.__
+__NOTE: To use this tool you must use the [custom fork](https://github.com/arjanjohan/sui/tree/override-sender) of the Sui CLI. This custom fork allows to create a transaction with a custom signer (i.e. the multisig wallet). We created a PR (https://github.com/MystenLabs/sui/pull/22158) to add this new feature to the next version of the Sui CLI.__
 
 ## Installation
 

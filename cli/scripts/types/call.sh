@@ -234,7 +234,7 @@ if [ ${#ARGS[@]} -eq 0 ]; then
 fi
 
 # Build the Sui CLI command
-CMD="sui client call --package $PACKAGE_ADDRESS --module $MODULE_NAME --function $FUNCTION_NAME --serialize-unsigned-transaction --custom-signer $MULTISIG_ADDR"
+CMD="sui client call --package $PACKAGE_ADDRESS --module $MODULE_NAME --function $FUNCTION_NAME --serialize-unsigned-transaction --override-sender $MULTISIG_ADDR"
 # Add arguments if any
 if [ ${#ARGS[@]} -gt 0 ]; then
     CMD="$CMD --args"
