@@ -136,4 +136,4 @@ fi
 echo "$SIGNATURE_RESPONSE" > "$SIGS_DIR/${SIGNER_ADDRESS#0x}"
 
 echo "✅ Transaction successfully signed"
-show_final_steps()
+show_final_steps

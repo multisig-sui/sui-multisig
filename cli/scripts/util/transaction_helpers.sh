@@ -59,8 +59,7 @@ show_next_steps() {
 }
 
 show_final_steps() {
-    echo "🔍 Next step:"
-    echo "Once enough approvals are collected, execute with: sui-multisig execute"
+    echo "🔍 Next step: Once enough approvals are collected, execute with: sui-multisig execute"
 }
 
 # Function to validate hex address
