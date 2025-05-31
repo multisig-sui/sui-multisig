@@ -70,7 +70,7 @@ if [ -z "$MULTISIG_ADDR" ]; then
 fi
 
 # Build and execute the Sui CLI command
-CMD="sui client publish \"$PACKAGE_DIR\" --serialize-unsigned-transaction --override-sender $MULTISIG_ADDR"
+CMD="sui client publish \"$PACKAGE_DIR\" --serialize-unsigned-transaction --sender $MULTISIG_ADDR"
 TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data")
 if [ $? -ne 0 ]; then
     echo "❌ Failed to generate transaction data"

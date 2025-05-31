@@ -37,9 +37,11 @@ Install the CLI tool globally using npm or pnpm:
 
 ```bash
 # Using npm
+npm run build
 npm install -g sui-multisig-cli
 
 # Using pnpm
+pnpm build
 pnpm add -g sui-multisig-cli
 ```
 
@@ -123,4 +125,4 @@ To learn more about how multisigs work on Sui check out these resources:
 - [NPM package for CLI tool](https://www.npmjs.com/package/sui-multisig-cli)
 - [Demo video](https://youtu.be/GX_vhvUv8ks)
 - [Pitchdeck](https://docs.google.com/presentation/d/1h-x2YUOr8FiCrCc1weWM6xX1A-5ekZF8Z5Fn9xboOUE/edit?usp=sharing)
-- [PR to add `--override-sender` flag to Sui CLI](https://github.com/MystenLabs/sui/pull/22158)
+- [PR to add `--sender` flag to Sui CLI](https://github.com/MystenLabs/sui/pull/22158)
