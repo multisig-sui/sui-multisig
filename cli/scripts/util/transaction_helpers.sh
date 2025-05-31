@@ -28,15 +28,21 @@ save_transaction_data() {
     local transaction_type="$2"
     local additional_info="$3"
 
+    # Check if required environment variables are set
+    if [ -z "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
+        echo "❌ Error: SUI_MULTISIG_TRANSACTIONS_DIR environment variable not set"
+        return 1
+    fi
+
     # Create transactions directory if it doesn't exist
-    mkdir -p transactions
+    mkdir -p "$SUI_MULTISIG_TRANSACTIONS_DIR"
 
     # Create timestamp
     local timestamp
     timestamp=$(date +%Y%m%d_%H%M%S)
 
     # Create transaction directory
-    local tx_dir="transactions/tx_${timestamp}_${transaction_type}_${additional_info}"
+    local tx_dir="$SUI_MULTISIG_TRANSACTIONS_DIR/tx_${timestamp}_${transaction_type}_${additional_info}"
     mkdir -p "$tx_dir"
 
     # Save the transaction bytes
@@ -48,8 +54,13 @@ save_transaction_data() {
 # Function to show next steps
 show_next_steps() {
     echo "🔍 Next steps:"
-    echo "1. To approve this transaction, run: ./scripts/2_approve_tx.sh"
-    echo "2. Once enough approvals are collected, execute with: ./scripts/3_execute_tx.sh"
+    echo "1. To approve this transaction, run: sui-multisig approve"
+    echo "2. Once enough approvals are collected, execute with: sui-multisig execute"
+}
+
+show_final_steps() {
+    echo "🔍 Next step:"
+    echo "Once enough approvals are collected, execute with: sui-multisig execute"
 }
 
 # Function to validate hex address
@@ -187,19 +198,21 @@ decode_and_display_tx() {
     return 0
 }
 
-# Function to select a multisig wallet
-# Sets global MULTISIG_ADDR variable
-# Returns: JSON string containing the selected multisig config
+# Function to select multisig wallet
 select_multisig_wallet() {
-    local CONFIG_FILES=()
-    # Use readarray to handle filenames with spaces
-    readarray -d '' CONFIG_FILES < <(find "multisigs" -maxdepth 1 -name "*.json" -print0)
+    # Check if multisigs directory exists
+    if [ ! -d "$SUI_MULTISIG_MULTISIGS_DIR" ]; then
+        echo "❌ Error: No multisigs directory found in ~/.sui-multisig"
+        echo "Please run sui-multisig setup first to create a multisig wallet"
+        exit 1
+    fi
 
-    # Check if multisigs directory exists and has files
-    if [ ${#CONFIG_FILES[@]} -eq 0 ]; then
-        echo "❌ Error: No multisig wallets found" >&2
-        echo "Please run 0_setup_multisig.sh first to create a multisig wallet" >&2
-        return 1
+    # Find all JSON files in multisigs directory
+    CONFIG_FILES=("$SUI_MULTISIG_MULTISIGS_DIR"/*.json)
+    if [ ! -f "${CONFIG_FILES[0]}" ]; then
+        echo "❌ Error: No multisig wallets found in ~/.sui-multisig/multisigs"
+        echo "Please run sui-multisig setup first to create a multisig wallet"
+        exit 1
     fi
 
     # Display available multisig wallets with details
@@ -208,17 +221,13 @@ select_multisig_wallet() {
     for i in "${!CONFIG_FILES[@]}"; do
         if [ -f "${CONFIG_FILES[$i]}" ]; then
             # Clean and parse the JSON file
-            local WALLET_DATA
             WALLET_DATA=$(tr -d '\n' < "${CONFIG_FILES[$i]}" | jq -c '.' 2>/dev/null)
             if [ $? -eq 0 ] && [ -n "$WALLET_DATA" ]; then
-                local MULTISIG_ADDR_LOCAL
-                local THRESHOLD
-                local SIGNER_COUNT
-                MULTISIG_ADDR_LOCAL=$(echo "$WALLET_DATA" | jq -r '.multisigAddress')
+                MULTISIG_ADDR=$(echo "$WALLET_DATA" | jq -r '.multisigAddress')
                 THRESHOLD=$(echo "$WALLET_DATA" | jq -r '.threshold')
                 SIGNER_COUNT=$(echo "$WALLET_DATA" | jq -r '.multisig | length')
                 echo "[$i] $(basename "${CONFIG_FILES[$i]}")"
-                echo "    └─ $MULTISIG_ADDR_LOCAL (threshold: $THRESHOLD, signers: $SIGNER_COUNT)"
+                echo "    └─ $MULTISIG_ADDR (threshold: $THRESHOLD, signers: $SIGNER_COUNT)"
             else
                 echo "[$i] $(basename "${CONFIG_FILES[$i]}") (invalid config)"
             fi
@@ -230,29 +239,27 @@ select_multisig_wallet() {
     while true; do
         read -p "Select multisig wallet number: " selection
         if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -lt "${#CONFIG_FILES[@]}" ]; then
-            local CONFIG_FILE="${CONFIG_FILES[$selection]}"
+            CONFIG_FILE="${CONFIG_FILES[$selection]}"
             if [ -f "$CONFIG_FILE" ]; then
                 # Clean and validate JSON
-                local CONFIG_CONTENT
                 CONFIG_CONTENT=$(tr -d '\n' < "$CONFIG_FILE" | jq -c '.' 2>/dev/null)
-                if [ $? -eq 0 ]; then
-                    # Set global MULTISIG_ADDR variable
-                    MULTISIG_ADDR=$(echo "$CONFIG_CONTENT" | jq -r '.multisigAddress')
-                    if [ -z "$MULTISIG_ADDR" ] || [ "$MULTISIG_ADDR" = "null" ]; then
-                        echo "❌ Error: Failed to extract multisig address from config" >&2
-                        return 1
-                    fi
-                    return 0
-                else
-                    echo "❌ Error: Invalid JSON in config file" >&2
-                    return 1
+                if [ $? -ne 0 ]; then
+                    echo "❌ Error: Invalid JSON in config file"
+                    exit 1
                 fi
+
+                MULTISIG_ADDR=$(echo "$CONFIG_CONTENT" | jq -r '.multisigAddress')
+                break
             else
-                echo "❌ Error: Selected config file not found" >&2
-                return 1
+                echo "❌ Error: Selected config file not found"
             fi
         else
-            echo "❌ Invalid selection. Please enter a number between 0 and $((${#CONFIG_FILES[@]}-1))" >&2
+            echo "❌ Invalid selection. Please enter a number between 0 and $((${#CONFIG_FILES[@]}-1))"
         fi
     done
+
+    echo -e "\n💼 Using multisig wallet: $(basename "$CONFIG_FILE")"
+    echo "📦 Address: $MULTISIG_ADDR"
+    echo "🔐 Threshold: $(echo "$CONFIG_CONTENT" | jq -r '.threshold')"
+    echo "👥 Signers: $(echo "$CONFIG_CONTENT" | jq -r '.multisig | length')"
 }

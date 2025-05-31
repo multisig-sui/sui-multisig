@@ -3,25 +3,28 @@
 
 # Debug info
 echo "Current directory: $(pwd)"
-echo "Script directory: $(dirname "${BASH_SOURCE[0]}")"
+echo "Script directory: $SUI_MULTISIG_SCRIPTS_DIR"
 
 # Source the helper script
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$SUI_MULTISIG_SCRIPTS_DIR"
 echo "Full script directory: $SCRIPT_DIR"
 echo "Helper script path: $SCRIPT_DIR/util/transaction_helpers.sh"
 
-# Ensure we're in the workspace root (parent of scripts directory)
-WORKSPACE_ROOT="$(dirname "$SCRIPT_DIR")"
-echo "Workspace root: $WORKSPACE_ROOT"
-
-if [ ! -d "$WORKSPACE_ROOT/scripts" ] || [ ! -d "$WORKSPACE_ROOT/multisigs" ]; then
-    echo "❌ Error: Not in workspace root or missing required directories"
-    echo "Please run this script from the workspace root directory"
+# Check if required environment variables are set
+if [ -z "$SUI_MULTISIG_CONFIG_DIR" ] || [ -z "$SUI_MULTISIG_MULTISIGS_DIR" ] || [ -z "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
+    echo "❌ Error: Required environment variables not set"
+    echo "Please ensure SUI_MULTISIG_CONFIG_DIR, SUI_MULTISIG_MULTISIGS_DIR, and SUI_MULTISIG_TRANSACTIONS_DIR are set"
     exit 1
 fi
 
-cd "$WORKSPACE_ROOT"
-echo "Changed to workspace root: $(pwd)"
+# Ensure required directories exist
+if [ ! -d "$SUI_MULTISIG_MULTISIGS_DIR" ]; then
+    mkdir -p "$SUI_MULTISIG_MULTISIGS_DIR"
+fi
+
+if [ ! -d "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
+    mkdir -p "$SUI_MULTISIG_TRANSACTIONS_DIR"
+fi
 
 if [ ! -f "$SCRIPT_DIR/util/transaction_helpers.sh" ]; then
     echo "❌ Error: Helper script not found at $SCRIPT_DIR/util/transaction_helpers.sh"

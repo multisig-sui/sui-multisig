@@ -1,17 +1,24 @@
 #!/bin/bash
 
+# Check if required environment variables are set
+if [ -z "$SUI_MULTISIG_CONFIG_DIR" ] || [ -z "$SUI_MULTISIG_MULTISIGS_DIR" ] || [ -z "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
+    echo "❌ Error: Required environment variables not set"
+    echo "Please ensure SUI_MULTISIG_CONFIG_DIR, SUI_MULTISIG_MULTISIGS_DIR, and SUI_MULTISIG_TRANSACTIONS_DIR are set"
+    exit 1
+fi
+
 # Check if multisigs directory exists
-if [ ! -d "multisigs" ]; then
-    echo "❌ Error: No multisigs directory found"
-    echo "Please run 0_setup_multisig.sh first to create a multisig wallet"
+if [ ! -d "$SUI_MULTISIG_MULTISIGS_DIR" ]; then
+    echo "❌ Error: No multisigs directory found in ~/.sui-multisig"
+    echo "Please run sui-multisig setup first to create a multisig wallet"
     exit 1
 fi
 
 # Find all JSON files in multisigs directory
-CONFIG_FILES=(multisigs/*.json)
+CONFIG_FILES=("$SUI_MULTISIG_MULTISIGS_DIR"/*.json)
 if [ ! -f "${CONFIG_FILES[0]}" ]; then
-    echo "❌ Error: No multisig wallets found in multisigs directory"
-    echo "Please run 0_setup_multisig.sh first to create a multisig wallet"
+    echo "❌ Error: No multisig wallets found in ~/.sui-multisig/multisigs"
+    echo "Please run sui-multisig setup first to create a multisig wallet"
     exit 1
 fi
 
@@ -58,20 +65,20 @@ while true; do
 done
 
 echo -e "\n💼 Using multisig wallet: $(basename "$CONFIG_FILE")"
-echo "📦 Address: $(echo "$CONFIG_CONTENT" | jq -r .multisig_address)"
+echo "📦 Address: $(echo "$CONFIG_CONTENT" | jq -r .multisigAddress)"
 echo "🔐 Threshold: $(echo "$CONFIG_CONTENT" | jq -r .threshold)"
 echo "👥 Signers: $(echo "$CONFIG_CONTENT" | jq -r '.multisig | length')"
 
 # Check if transactions directory exists
-if [ ! -d "transactions" ]; then
-    echo -e "\n❌ Error: No transactions directory found"
+if [ ! -d "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
+    echo -e "\n❌ Error: No transactions directory found in ~/.sui-multisig"
     exit 1
 fi
 
 # List all transaction directories
-TX_DIRS=(transactions/tx_*)
+TX_DIRS=("$SUI_MULTISIG_TRANSACTIONS_DIR"/tx_*)
 if [ ${#TX_DIRS[@]} -eq 0 ] || [ ! -d "${TX_DIRS[0]}" ]; then
-    echo "Error: No transactions found"
+    echo "Error: No transactions found in ~/.sui-multisig/transactions"
     exit 1
 fi
 
@@ -181,7 +188,6 @@ fi
 
 # Combine signatures
 echo -e "\n🔄 Combining signatures..."
-echo "Command: $COMBINE_CMD"
 MULTISIG_RESPONSE=$(eval "$COMBINE_CMD")
 if [ $? -ne 0 ]; then
     echo "❌ Failed to combine signatures"

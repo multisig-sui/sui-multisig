@@ -12,14 +12,26 @@ const program = new Command();
 program
   .name('sui-multisig')
   .description('CLI tool for managing Sui multisig operations')
-  .version('1.0.0');
+  .version('1.2.0');
 
-// Helper function to get the config directory
+// Helper function to get the config directory and ensure required subdirectories exist
 function getConfigDir(): string {
   const configDir = join(homedir(), '.sui-multisig');
+  const requiredDirs = ['multisigs', 'transactions'];
+
+  // Create main config directory if it doesn't exist
   if (!existsSync(configDir)) {
     mkdirSync(configDir, { recursive: true });
   }
+
+  // Create required subdirectories
+  for (const dir of requiredDirs) {
+    const fullPath = join(configDir, dir);
+    if (!existsSync(fullPath)) {
+      mkdirSync(fullPath, { recursive: true });
+    }
+  }
+
   return configDir;
 }
 
@@ -27,11 +39,15 @@ function getConfigDir(): string {
 function runScript(scriptName: string, args: string[] = []): void {
   try {
     const scriptPath = join(__dirname, '..', 'scripts', scriptName);
+    const configDir = getConfigDir();
 
     // Set environment variables for the scripts
     const env = {
       ...process.env,
-      SUI_MULTISIG_CONFIG_DIR: getConfigDir()
+      SUI_MULTISIG_CONFIG_DIR: configDir,
+      SUI_MULTISIG_MULTISIGS_DIR: join(configDir, 'multisigs'),
+      SUI_MULTISIG_TRANSACTIONS_DIR: join(configDir, 'transactions'),
+      SUI_MULTISIG_SCRIPTS_DIR: join(__dirname, '..', 'scripts')
     };
 
     const command = `bash ${scriptPath} ${args.join(' ')}`;

@@ -1,19 +1,26 @@
 #!/bin/bash
 
 # Source the helper script
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$SUI_MULTISIG_SCRIPTS_DIR"
 source "$SCRIPT_DIR/util/transaction_helpers.sh"
 
+# Check if required environment variables are set
+if [ -z "$SUI_MULTISIG_CONFIG_DIR" ] || [ -z "$SUI_MULTISIG_MULTISIGS_DIR" ] || [ -z "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
+    echo "❌ Error: Required environment variables not set"
+    echo "Please ensure SUI_MULTISIG_CONFIG_DIR, SUI_MULTISIG_MULTISIGS_DIR, and SUI_MULTISIG_TRANSACTIONS_DIR are set"
+    exit 1
+fi
+
 # Check if transactions directory exists
-if [ ! -d "transactions" ]; then
-    echo "Error: No transactions directory found"
+if [ ! -d "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
+    echo "Error: No transactions directory found in ~/.sui-multisig"
     exit 1
 fi
 
 # List all transaction directories
-TX_DIRS=(transactions/tx_*)
+TX_DIRS=("$SUI_MULTISIG_TRANSACTIONS_DIR"/tx_*)
 if [ ${#TX_DIRS[@]} -eq 0 ] || [ ! -d "${TX_DIRS[0]}" ]; then
-    echo "Error: No transactions found"
+    echo "Error: No transactions found in ~/.sui-multisig/transactions"
     exit 1
 fi
 
@@ -129,4 +136,4 @@ fi
 echo "$SIGNATURE_RESPONSE" > "$SIGS_DIR/${SIGNER_ADDRESS#0x}"
 
 echo "✅ Transaction successfully signed"
-echo "📂 Transaction directory: $(basename "$TX_DIR")"
+show_final_steps()

@@ -2,15 +2,19 @@
 # Sets up a multisig wallet with multiple public keys and weights
 
 # Source the helper script
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$SUI_MULTISIG_SCRIPTS_DIR"
 source "$SCRIPT_DIR/util/transaction_helpers.sh"
 
-# Get the config directory from environment variable or use default
-CONFIG_DIR=${SUI_MULTISIG_CONFIG_DIR:-"$HOME/.sui-multisig"}
-TRANSACTIONS_DIR="$CONFIG_DIR/transactions"
+# Check if required environment variables are set
+if [ -z "$SUI_MULTISIG_CONFIG_DIR" ] || [ -z "$SUI_MULTISIG_MULTISIGS_DIR" ] || [ -z "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
+    echo "❌ Error: Required environment variables not set"
+    echo "Please ensure SUI_MULTISIG_CONFIG_DIR, SUI_MULTISIG_MULTISIGS_DIR, and SUI_MULTISIG_TRANSACTIONS_DIR are set"
+    exit 1
+fi
 
 # Create directories if they don't exist
-mkdir -p "$TRANSACTIONS_DIR"
+mkdir -p "$SUI_MULTISIG_MULTISIGS_DIR"
+mkdir -p "$SUI_MULTISIG_TRANSACTIONS_DIR"
 
 # Function to show usage
 show_usage() {
@@ -198,7 +202,6 @@ CMD="$CMD --json"
 
 # Execute the command
 echo -e "\n🔄 Generating multisig address..."
-echo "$CMD"
 MULTISIG_RESPONSE=$(eval "$CMD")
 if [ $? -ne 0 ]; then
     echo "❌ Failed to generate multisig address"
@@ -206,46 +209,41 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Extract multisig address for the filename
-MULTISIG_ADDRESS=$(echo "$MULTISIG_RESPONSE" | jq -r '.multisigAddress')
-if [ -z "$MULTISIG_ADDRESS" ] || [ "$MULTISIG_ADDRESS" = "null" ]; then
+# Extract multisig address
+MULTISIG_ADDR=$(echo "$MULTISIG_RESPONSE" | jq -r '.multisigAddress')
+if [ -z "$MULTISIG_ADDR" ] || [ "$MULTISIG_ADDR" = "null" ]; then
     echo "❌ Failed to extract multisig address from response"
     exit 1
 fi
 
-# Create multisigs directory if it doesn't exist
-mkdir -p multisigs
+# Create config file name from first address name
+CONFIG_NAME="${SELECTED_NAMES[0]}"
 
 # Prompt for custom name
 echo -e "\n📝 Enter a name for this multisig wallet"
 echo "   (press enter to use the address as name)"
 read -p "> " WALLET_NAME
-
-# Determine filename
 if [ -z "$WALLET_NAME" ]; then
-    CONFIG_FILE="multisigs/${MULTISIG_ADDRESS#0x}.json"
-else
-    # Replace spaces with underscores and remove special characters
-    WALLET_NAME=$(echo "$WALLET_NAME" | tr ' ' '_' | tr -cd '[:alnum:]_-')
-    CONFIG_FILE="multisigs/${WALLET_NAME}.json"
+    WALLET_NAME="${MULTISIG_ADDR#0x}"
 fi
+CONFIG_FILE="$SUI_MULTISIG_MULTISIGS_DIR/${WALLET_NAME}.json"
 
-# Check if file already exists
-if [ -f "$CONFIG_FILE" ]; then
-    echo "❌ A wallet with this name already exists"
-    exit 1
-fi
-
-# Add threshold to the JSON response
+# Save the configuration
 MULTISIG_RESPONSE=$(echo "$MULTISIG_RESPONSE" | jq --arg threshold "$THRESHOLD" '. + {threshold: ($threshold|tonumber)}')
 
 echo "$MULTISIG_RESPONSE" > "$CONFIG_FILE"
+
+echo -e "\n✅ Multisig wallet created successfully!"
+echo "📦 Address: $MULTISIG_ADDR"
+echo "🔐 Threshold: $THRESHOLD"
+echo "👥 Signers: ${#SELECTED_ADDRESSES[@]}"
+echo "💾 Configuration saved to: $CONFIG_FILE"
 
 # Fund the multisig address with Sui tokens
 echo -e "\n🔄 Funding multisig address..."
 
 # First try faucet
-FAUCET_RESPONSE=$(sui client faucet --address $MULTISIG_ADDRESS 2>&1)
+FAUCET_RESPONSE=$(sui client faucet --address $MULTISIG_ADDR 2>&1)
 if [ $? -eq 0 ]; then
     echo "✅ Successfully funded multisig address from faucet"
 else
@@ -275,7 +273,7 @@ else
 
             # Send funds to multisig address
             echo "🔄 Sending $AMOUNT_TO_SEND MIST to multisig address..."
-            PAYMENT_RESPONSE=$(sui client transfer-sui --sui-coin-object-id $FIRST_GAS_COIN --amount $AMOUNT_TO_SEND --to $MULTISIG_ADDRESS --gas-budget 50000000)
+            PAYMENT_RESPONSE=$(sui client transfer-sui --sui-coin-object-id $FIRST_GAS_COIN --amount $AMOUNT_TO_SEND --to $MULTISIG_ADDR --gas-budget 50000000)
             if [ $? -eq 0 ]; then
                 echo "✅ Successfully funded multisig address with $AMOUNT_TO_SEND MIST"
             else
@@ -288,7 +286,7 @@ else
 fi
 
 echo -e "\n✅ Multisig setup complete!"
-echo "📦 Multisig address: $MULTISIG_ADDRESS"
+echo "📦 Multisig address: $MULTISIG_ADDR"
 echo "🔑 Configuration saved to: $CONFIG_FILE"
 echo ""
 echo "Next steps:"
