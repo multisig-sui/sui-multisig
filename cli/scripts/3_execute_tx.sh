@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# Parse command line arguments
+EXECUTE_ALL=false
+for arg in "$@"; do
+    case $arg in
+        --all|-a)
+            EXECUTE_ALL=true
+            shift
+            ;;
+    esac
+done
+
 # Check if required environment variables are set
 if [ -z "$SUI_MULTISIG_CONFIG_DIR" ] || [ -z "$SUI_MULTISIG_MULTISIGS_DIR" ] || [ -z "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
     echo "❌ Error: Required environment variables not set"
@@ -54,7 +65,6 @@ while true; do
                 echo "❌ Error: Invalid JSON in config file"
                 exit 1
             fi
-
             break
         else
             echo "❌ Error: Selected config file not found"
@@ -90,136 +100,165 @@ for i in "${!TX_DIRS[@]}"; do
 done
 echo "------------------------"
 
-# Prompt user to select a transaction
-while true; do
-    read -p "Select transaction number: " selection
-    if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -lt "${#TX_DIRS[@]}" ]; then
-        TX_DIR="${TX_DIRS[$selection]}"
-        break
-    else
-        echo "❌ Invalid selection. Please enter a number between 0 and $((${#TX_DIRS[@]}-1))"
+# Function to execute a single transaction
+execute_transaction() {
+    local TX_DIR="$1"
+    local CONFIG_CONTENT="$2"
+
+    # Get the transaction bytes
+    TX_BYTES_FILE="$TX_DIR/tx_bytes"
+    if [ ! -f "$TX_BYTES_FILE" ]; then
+        echo "Error: Transaction bytes file not found: $TX_BYTES_FILE"
+        return 1
     fi
-done
 
-# Get the transaction bytes
-TX_BYTES_FILE="$TX_DIR/tx_bytes"
-if [ ! -f "$TX_BYTES_FILE" ]; then
-    echo "Error: Transaction bytes file not found: $TX_BYTES_FILE"
-    exit 1
-fi
-
-TX_BYTES=$(cat "$TX_BYTES_FILE")
-if [ -z "$TX_BYTES" ]; then
-    echo "Error: No transaction bytes found"
-    exit 1
-fi
-
-# Check for signatures
-SIGS_DIR="$TX_DIR/signatures"
-if [ ! -d "$SIGS_DIR" ] || [ -z "$(ls -A "$SIGS_DIR" 2>/dev/null)" ]; then
-    echo "Error: No signatures found for this transaction"
-    exit 1
-fi
-
-# Extract multisig config
-THRESHOLD=$(echo "$CONFIG_CONTENT" | jq -r '.threshold')
-TOTAL_WEIGHT=$(echo "$CONFIG_CONTENT" | jq -r '[.multisig[].weight] | add')
-
-# Build command to combine signatures
-COMBINE_CMD="sui keytool multi-sig-combine-partial-sig --threshold $THRESHOLD --json"
-
-# Add public keys and weights
-PK_LIST=""
-WEIGHT_LIST=""
-while IFS= read -r line; do
-    PK_LIST="$PK_LIST $line"
-done < <(echo "$CONFIG_CONTENT" | jq -r '.multisig[].publicBase64Key')
-COMBINE_CMD="$COMBINE_CMD --pks$PK_LIST"
-
-while IFS= read -r line; do
-    WEIGHT_LIST="$WEIGHT_LIST $line"
-done < <(echo "$CONFIG_CONTENT" | jq -r '.multisig[].weight')
-COMBINE_CMD="$COMBINE_CMD --weights$WEIGHT_LIST"
-
-# Get list of valid signers
-declare -A VALID_SIGNERS
-declare -A SIGNER_WEIGHTS
-
-while IFS= read -r signer; do
-    addr=$(echo "$signer" | jq -r '.address')
-    weight=$(echo "$signer" | jq -r '.weight')
-    addr_no_prefix=${addr#0x}
-    VALID_SIGNERS["$addr_no_prefix"]="Signer $addr_no_prefix"
-    SIGNER_WEIGHTS["$addr_no_prefix"]="$weight"
-done < <(echo "$CONFIG_CONTENT" | jq -c '.multisig[]')
-
-# Process signatures
-echo -e "\n📋 Signature Status:"
-echo "------------------------"
-SIGNED_COUNT=0
-SIGNED_WEIGHT=0
-SIG_LIST=""
-
-for sig_file in "$SIGS_DIR"/*; do
-    addr=$(basename "$sig_file")
-    if [[ -n "${VALID_SIGNERS[$addr]}" ]]; then
-        sig_data=$(jq -r '.suiSignature' "$sig_file")
-        echo "✓ ${VALID_SIGNERS[$addr]} (weight: ${SIGNER_WEIGHTS[$addr]})"
-        SIG_LIST="$SIG_LIST $sig_data"
-        ((SIGNED_COUNT++))
-        SIGNED_WEIGHT=$((SIGNED_WEIGHT + SIGNER_WEIGHTS[$addr]))
-    else
-        echo "❌ Unknown signer: 0x$addr (ignored)"
+    TX_BYTES=$(cat "$TX_BYTES_FILE")
+    if [ -z "$TX_BYTES" ]; then
+        echo "Error: No transaction bytes found"
+        return 1
     fi
-done
 
-# Add valid signatures to command
-COMBINE_CMD="$COMBINE_CMD --sigs$SIG_LIST"
+    # Check for signatures
+    SIGS_DIR="$TX_DIR/signatures"
+    if [ ! -d "$SIGS_DIR" ] || [ -z "$(ls -A "$SIGS_DIR" 2>/dev/null)" ]; then
+        echo "Error: No signatures found for this transaction"
+        return 1
+    fi
 
-echo "------------------------"
-echo "📊 Signing Progress:"
-echo "• Signers: $SIGNED_COUNT/${#VALID_SIGNERS[@]}"
-echo "• Weight: $SIGNED_WEIGHT/$TOTAL_WEIGHT (threshold: $THRESHOLD)"
+    # Extract multisig config
+    THRESHOLD=$(echo "$CONFIG_CONTENT" | jq -r '.threshold')
+    TOTAL_WEIGHT=$(echo "$CONFIG_CONTENT" | jq -r '[.multisig[].weight] | add')
 
-if [ "$SIGNED_WEIGHT" -lt "$THRESHOLD" ]; then
-    echo "❌ Not enough signatures (weight $SIGNED_WEIGHT < threshold $THRESHOLD)"
-    exit 1
-fi
+    # Build command to combine signatures
+    COMBINE_CMD="sui keytool multi-sig-combine-partial-sig --threshold $THRESHOLD --json"
 
-# Combine signatures
-echo -e "\n🔄 Combining signatures..."
-MULTISIG_RESPONSE=$(eval "$COMBINE_CMD")
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to combine signatures"
-    echo "$MULTISIG_RESPONSE"
-    exit 1
-fi
+    # Add public keys and weights
+    PK_LIST=""
+    WEIGHT_LIST=""
+    while IFS= read -r line; do
+        PK_LIST="$PK_LIST $line"
+    done < <(echo "$CONFIG_CONTENT" | jq -r '.multisig[].publicBase64Key')
+    COMBINE_CMD="$COMBINE_CMD --pks$PK_LIST"
 
-# Extract serialized multisig from JSON response
-SERIALIZED_MULTISIG=$(echo "$MULTISIG_RESPONSE" | jq -r '.multisigSerialized')
-if [ -z "$SERIALIZED_MULTISIG" ] || [ "$SERIALIZED_MULTISIG" = "null" ]; then
-    echo "❌ Failed to extract serialized multisig"
-    exit 1
-fi
+    while IFS= read -r line; do
+        WEIGHT_LIST="$WEIGHT_LIST $line"
+    done < <(echo "$CONFIG_CONTENT" | jq -r '.multisig[].weight')
+    COMBINE_CMD="$COMBINE_CMD --weights$WEIGHT_LIST"
 
-# Execute the transaction
-echo "🔄 Submitting transaction..."
-EXECUTE_CMD="sui client execute-signed-tx --tx-bytes \"$TX_BYTES\" --signatures \"$SERIALIZED_MULTISIG\" --json"
-RESPONSE=$(eval "$EXECUTE_CMD")
+    # Get list of valid signers
+    declare -A VALID_SIGNERS
+    declare -A SIGNER_WEIGHTS
 
-if [ $? -eq 0 ]; then
-    TX_HASH=$(echo "$RESPONSE" | jq -r '.digest')
-    echo "✅ Transaction successfully submitted"
-    echo "📝 Transaction hash: $TX_HASH"
+    while IFS= read -r signer; do
+        addr=$(echo "$signer" | jq -r '.address')
+        weight=$(echo "$signer" | jq -r '.weight')
+        addr_no_prefix=${addr#0x}
+        VALID_SIGNERS["$addr_no_prefix"]="Signer $addr_no_prefix"
+        SIGNER_WEIGHTS["$addr_no_prefix"]="$weight"
+    done < <(echo "$CONFIG_CONTENT" | jq -c '.multisig[]')
 
-    # Clean up transaction directory
-    echo "🧹 Cleaning up transaction files..."
-    rm -rf "$TX_DIR"
+    # Process signatures
+    echo -e "\n📋 Signature Status for $(basename "$TX_DIR"):"
+    echo "------------------------"
+    SIGNED_COUNT=0
+    SIGNED_WEIGHT=0
+    SIG_LIST=""
+
+    for sig_file in "$SIGS_DIR"/*; do
+        addr=$(basename "$sig_file")
+        if [[ -n "${VALID_SIGNERS[$addr]}" ]]; then
+            sig_data=$(jq -r '.suiSignature' "$sig_file")
+            echo "✓ ${VALID_SIGNERS[$addr]} (weight: ${SIGNER_WEIGHTS[$addr]})"
+            SIG_LIST="$SIG_LIST $sig_data"
+            ((SIGNED_COUNT++))
+            SIGNED_WEIGHT=$((SIGNED_WEIGHT + SIGNER_WEIGHTS[$addr]))
+        else
+            echo "❌ Unknown signer: 0x$addr (ignored)"
+        fi
+    done
+
+    echo "------------------------"
+    echo "📊 Signing Progress:"
+    echo "• Signers: $SIGNED_COUNT/${#VALID_SIGNERS[@]}"
+    echo "• Weight: $SIGNED_WEIGHT/$TOTAL_WEIGHT (threshold: $THRESHOLD)"
+
+    if [ "$SIGNED_WEIGHT" -lt "$THRESHOLD" ]; then
+        echo "❌ Not enough signatures (weight $SIGNED_WEIGHT < threshold $THRESHOLD)"
+        return 1
+    fi
+
+    # Combine signatures
+    echo -e "\n🔄 Combining signatures..."
+    MULTISIG_RESPONSE=$(eval "$COMBINE_CMD")
     if [ $? -ne 0 ]; then
-        echo "⚠️ Warning: Failed to clean up transaction directory"
+        echo "❌ Failed to combine signatures"
+        echo "$MULTISIG_RESPONSE"
+        return 1
+    fi
+
+    # Extract serialized multisig from JSON response
+    SERIALIZED_MULTISIG=$(echo "$MULTISIG_RESPONSE" | jq -r '.multisigSerialized')
+    if [ -z "$SERIALIZED_MULTISIG" ] || [ "$SERIALIZED_MULTISIG" = "null" ]; then
+        echo "❌ Failed to extract serialized multisig"
+        return 1
+    fi
+
+    # Execute the transaction
+    echo "🔄 Submitting transaction..."
+    EXECUTE_CMD="sui client execute-signed-tx --tx-bytes \"$TX_BYTES\" --signatures \"$SERIALIZED_MULTISIG\" --json"
+    RESPONSE=$(eval "$EXECUTE_CMD")
+
+    if [ $? -eq 0 ]; then
+        TX_HASH=$(echo "$RESPONSE" | jq -r '.digest')
+        echo "✅ Transaction successfully submitted"
+        echo "📝 Transaction hash: $TX_HASH"
+
+        # Clean up transaction directory
+        echo "🧹 Cleaning up transaction files..."
+        rm -rf "$TX_DIR"
+        if [ $? -ne 0 ]; then
+            echo "⚠️ Warning: Failed to clean up transaction directory"
+        fi
+        return 0
+    else
+        echo "❌ Failed to submit transaction"
+        echo "❌ $RESPONSE"
+        return 1
+    fi
+}
+
+if [ "$EXECUTE_ALL" = true ]; then
+    echo "🔄 Attempting to execute all transactions..."
+    SUCCESS_COUNT=0
+    FAIL_COUNT=0
+
+    for TX_DIR in "${TX_DIRS[@]}"; do
+        echo -e "\n📦 Processing transaction: $(basename "$TX_DIR")"
+        if execute_transaction "$TX_DIR" "$CONFIG_CONTENT"; then
+            ((SUCCESS_COUNT++))
+        else
+            ((FAIL_COUNT++))
+        fi
+    done
+
+    echo -e "\n📊 Execution Summary:"
+    echo "✅ Successfully executed: $SUCCESS_COUNT"
+    echo "❌ Failed to execute: $FAIL_COUNT"
+
+    if [ $FAIL_COUNT -gt 0 ]; then
+        exit 1
     fi
 else
-    echo "❌ Failed to submit transaction"
-    echo "❌ $RESPONSE"
-    exit 1
+    # Prompt user to select a transaction
+    while true; do
+        read -p "Select transaction number: " selection
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -lt "${#TX_DIRS[@]}" ]; then
+            TX_DIR="${TX_DIRS[$selection]}"
+            break
+        else
+            echo "❌ Invalid selection. Please enter a number between 0 and $((${#TX_DIRS[@]}-1))"
+        fi
+    done
+
+    execute_transaction "$TX_DIR" "$CONFIG_CONTENT"
 fi
