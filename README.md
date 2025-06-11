@@ -114,6 +114,8 @@ __NOTE: To use this tool you must use the [custom fork](https://github.com/arjan
 
 - [CLI] Filter transactions by multisig in step 2 (approval)
 - [CLI] Add a function to batch execute approved transactions
+- [CLI] Batch create transactions (using json files)
+- [CLI] Change flow for create > first select multisig
 
 ## Learn More
 

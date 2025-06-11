@@ -1,14 +1,8 @@
 #!/bin/bash
 # Creates a multisig transaction
 
-# Debug info
-echo "Current directory: $(pwd)"
-echo "Script directory: $SUI_MULTISIG_SCRIPTS_DIR"
-
 # Source the helper script
 SCRIPT_DIR="$SUI_MULTISIG_SCRIPTS_DIR"
-echo "Full script directory: $SCRIPT_DIR"
-echo "Helper script path: $SCRIPT_DIR/util/transaction_helpers.sh"
 
 # Check if required environment variables are set
 if [ -z "$SUI_MULTISIG_CONFIG_DIR" ] || [ -z "$SUI_MULTISIG_MULTISIGS_DIR" ] || [ -z "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
@@ -293,6 +287,11 @@ if [ -n "$BATCH_FILE" ]; then
     exit 0
 fi
 
+# If no multisig address specified, prompt for selection
+if [ -z "$MULTISIG_ADDR" ]; then
+    select_multisig_wallet
+fi
+
 # If no type specified, prompt user
 if [ -z "$TRANSACTION_TYPE" ]; then
     select_transaction_type
@@ -303,11 +302,6 @@ if [[ ! " ${VALID_TYPES[@]} " =~ " ${TRANSACTION_TYPE} " ]]; then
     echo "❌ Invalid transaction type: $TRANSACTION_TYPE"
     echo "Valid types are: ${VALID_TYPES[*]}"
     exit 1
-fi
-
-# If no multisig address specified, prompt for selection
-if [ -z "$MULTISIG_ADDR" ]; then
-    select_multisig_wallet
 fi
 
 # Filter out type, batch, and multisig related arguments from ORIGINAL_ARGS
