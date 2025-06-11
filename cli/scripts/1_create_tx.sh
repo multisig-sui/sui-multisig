@@ -40,11 +40,35 @@ VALID_TYPES=("publish" "upgrade" "call" "transfer")
 show_usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
-    echo "  -t, --type TYPE    Transaction type (${VALID_TYPES[*]})"
-    echo "  -h, --help         Show this help message"
+    echo "  -t, --type TYPE        Transaction type (${VALID_TYPES[*]})"
+    echo "  -b, --batch-file FILE  Create multiple transactions from JSON file"
+    echo "  -h, --help             Show this help message"
     echo ""
     echo "Additional options will be passed to the transaction type script."
     echo "Run the specific transaction type script with --help to see its options."
+    echo ""
+    echo "Batch JSON file format:"
+    echo '{
+    "transactions": [
+        {
+            "type": "publish",
+            "params": {
+                "package": "path/to/package",
+                "gas_budget": "100000000"
+            }
+        },
+        {
+            "type": "call",
+            "params": {
+                "package": "0x123...",
+                "module": "example",
+                "function": "do_something",
+                "args": ["0x456...", "1000"],
+                "gas_budget": "100000000"
+            }
+        }
+    ]
+}'
 }
 
 # Store original arguments
@@ -52,12 +76,17 @@ ORIGINAL_ARGS=("$@")
 
 # Initialize variables
 TRANSACTION_TYPE=""
+BATCH_FILE=""
 
 # Simple argument parsing for type and help
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -t|--type)
             TRANSACTION_TYPE="$2"
+            shift 2
+            ;;
+        -b|--batch-file)
+            BATCH_FILE="$2"
             shift 2
             ;;
         -h|--help)
@@ -89,6 +118,78 @@ select_transaction_type() {
     done
 }
 
+# Function to process batch file
+process_batch_file() {
+    local batch_file="$1"
+
+    # Check if file exists
+    if [ ! -f "$batch_file" ]; then
+        echo "❌ Error: Batch file not found: $batch_file"
+        exit 1
+    fi
+
+    # Validate JSON format
+    if ! jq empty "$batch_file" 2>/dev/null; then
+        echo "❌ Error: Invalid JSON format in batch file"
+        exit 1
+    fi
+
+    # Check if transactions array exists
+    if ! jq -e '.transactions' "$batch_file" >/dev/null 2>&1; then
+        echo "❌ Error: Batch file must contain a 'transactions' array"
+        exit 1
+    fi
+
+    # Process each transaction
+    local tx_count=$(jq '.transactions | length' "$batch_file")
+    echo "📦 Processing $tx_count transactions from batch file..."
+
+    for ((i=0; i<tx_count; i++)); do
+        local tx_type=$(jq -r ".transactions[$i].type" "$batch_file")
+        local tx_params=$(jq -c ".transactions[$i].params" "$batch_file")
+
+        # Validate transaction type
+        if [[ ! " ${VALID_TYPES[@]} " =~ " ${tx_type} " ]]; then
+            echo "❌ Invalid transaction type in batch file: $tx_type"
+            continue
+        fi
+
+        echo -e "\n🔄 Processing transaction $((i+1))/$tx_count (type: $tx_type)..."
+
+        # Convert JSON params to command line arguments
+        local args=()
+        while IFS= read -r line; do
+            echo "--------------------------------"
+            echo "line: $line"
+            echo "--------------------------------"
+            param_name=$(echo "$line" | jq -r '.key')
+            param_value=$(echo "$line" | jq -r '.value')
+            args+=("--$param_name" "$param_value")
+        done < <(echo "$tx_params" | jq -c 'to_entries | map({key: .key, value: .value}) | .[]')
+
+        # Debug output
+        echo "--------------------------------"
+        echo "AVH Arguments: ${args[*]}"
+        echo "--------------------------------"
+
+        # Execute the transaction
+        export MULTISIG_ADDR
+        "$SCRIPT_DIR/types/$tx_type.sh" "${args[@]}"
+
+        if [ $? -eq 0 ]; then
+            echo "✅ Transaction $((i+1)) completed successfully"
+        else
+            echo "❌ Transaction $((i+1)) failed"
+        fi
+    done
+}
+
+# If batch file is specified, process it
+if [ -n "$BATCH_FILE" ]; then
+    process_batch_file "$BATCH_FILE"
+    exit 0
+fi
+
 # If no type specified, prompt user
 if [ -z "$TRANSACTION_TYPE" ]; then
     select_transaction_type
@@ -105,8 +206,9 @@ fi
 FILTERED_ARGS=()
 i=0
 while [ $i -lt ${#ORIGINAL_ARGS[@]} ]; do
-    if [[ "${ORIGINAL_ARGS[$i]}" == "-t" || "${ORIGINAL_ARGS[$i]}" == "--type" ]]; then
-        # Skip the type argument and its value
+    if [[ "${ORIGINAL_ARGS[$i]}" == "-t" || "${ORIGINAL_ARGS[$i]}" == "--type" ]] ||
+       [[ "${ORIGINAL_ARGS[$i]}" == "-b" || "${ORIGINAL_ARGS[$i]}" == "--batch-file" ]]; then
+        # Skip the argument and its value
         i=$((i + 2))
     else
         FILTERED_ARGS+=("${ORIGINAL_ARGS[$i]}")
