@@ -153,12 +153,10 @@ prompt_arguments() {
     fi
 
     # Try different patterns to find the function
-    echo "🔍 Searching for function definition..."
     FUNCTION_PATTERN="entry public $FUNCTION_NAME"
     FUNCTION_LINE=$(echo "$MODULE_CONTENT" | grep -n "$FUNCTION_PATTERN" | cut -d: -f1)
 
     if [ -n "$FUNCTION_LINE" ]; then
-        echo "📍 Found function at line $FUNCTION_LINE"
         # Get the function definition and the next few lines for context
         CONTEXT_LINES=$(echo "$MODULE_CONTENT" | tail -n "+$FUNCTION_LINE" | head -n 5)
 

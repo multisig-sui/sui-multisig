@@ -144,6 +144,9 @@ process_batch_file() {
     local tx_count=$(jq '.transactions | length' "$batch_file")
     echo "📦 Processing $tx_count transactions from batch file..."
 
+    # Array to store transaction results
+    declare -a results
+
     for ((i=0; i<tx_count; i++)); do
         local tx_type=$(jq -r ".transactions[$i].type" "$batch_file")
         local tx_params=$(jq -c ".transactions[$i].params" "$batch_file")
@@ -151,6 +154,7 @@ process_batch_file() {
         # Validate transaction type
         if [[ ! " ${VALID_TYPES[@]} " =~ " ${tx_type} " ]]; then
             echo "❌ Invalid transaction type in batch file: $tx_type"
+            results+=("❌ $tx_type (invalid type)")
             continue
         fi
 
@@ -179,10 +183,42 @@ process_batch_file() {
             else
                 echo "   Error: $error_output"
             fi
+            results+=("❌ $tx_type")
         else
             echo "✅ Transaction $((i+1)) completed successfully"
+            results+=("✅ $tx_type")
         fi
     done
+
+    # Print summary
+    echo -e "\n📊 Batch Processing Summary:"
+    echo "----------------------------------------"
+    for ((i=0; i<${#results[@]}; i++)); do
+        echo "$((i+1)). ${results[$i]}"
+    done
+    echo "----------------------------------------"
+
+    # Count successes and failures
+    local success_count=0
+    local failure_count=0
+    for result in "${results[@]}"; do
+        if [[ $result == ✅* ]]; then
+            ((success_count++))
+        else
+            ((failure_count++))
+        fi
+    done
+
+    echo "Total: $tx_count transactions"
+    echo "✅ Success: $success_count"
+    echo "❌ Failed: $failure_count"
+    echo "----------------------------------------"
+
+    # Return non-zero if any transaction failed
+    if [ $failure_count -gt 0 ]; then
+        return 1
+    fi
+    return 0
 }
 
 # If batch file is specified, process it
