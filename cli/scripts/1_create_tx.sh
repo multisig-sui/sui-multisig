@@ -159,27 +159,28 @@ process_batch_file() {
         # Convert JSON params to command line arguments
         local args=()
         while IFS= read -r line; do
-            echo "--------------------------------"
-            echo "line: $line"
-            echo "--------------------------------"
             param_name=$(echo "$line" | jq -r '.key')
             param_value=$(echo "$line" | jq -r '.value')
             args+=("--$param_name" "$param_value")
         done < <(echo "$tx_params" | jq -c 'to_entries | map({key: .key, value: .value}) | .[]')
 
-        # Debug output
-        echo "--------------------------------"
-        echo "AVH Arguments: ${args[*]}"
-        echo "--------------------------------"
-
         # Execute the transaction
         export MULTISIG_ADDR
-        "$SCRIPT_DIR/types/$tx_type.sh" "${args[@]}"
-
-        if [ $? -eq 0 ]; then
-            echo "✅ Transaction $((i+1)) completed successfully"
-        else
+        if ! "$SCRIPT_DIR/types/$tx_type.sh" "${args[@]}"; then
             echo "❌ Transaction $((i+1)) failed"
+            # Get the error output
+            local error_output
+            error_output=$("$SCRIPT_DIR/types/$tx_type.sh" "${args[@]}" 2>&1)
+            if echo "$error_output" | grep -q "unrecognized option"; then
+                echo "   Invalid option provided. Available options for $tx_type:"
+                echo "   ----------------------------------------"
+                "$SCRIPT_DIR/types/$tx_type.sh" --help | grep -v "Usage:" | grep -v "^$" | sed 's/^/   /'
+                echo "   ----------------------------------------"
+            else
+                echo "   Error: $error_output"
+            fi
+        else
+            echo "✅ Transaction $((i+1)) completed successfully"
         fi
     done
 }
