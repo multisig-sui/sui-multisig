@@ -46,29 +46,7 @@ show_usage() {
     echo ""
     echo "Additional options will be passed to the transaction type script."
     echo "Run the specific transaction type script with --help to see its options."
-    echo ""
-    echo "Batch JSON file format:"
-    echo '{
-    "transactions": [
-        {
-            "type": "publish",
-            "params": {
-                "package": "path/to/package",
-                "gas_budget": "100000000"
-            }
-        },
-        {
-            "type": "call",
-            "params": {
-                "package": "0x123...",
-                "module": "example",
-                "function": "do_something",
-                "args": ["0x456...", "1000"],
-                "gas_budget": "100000000"
-            }
-        }
-    ]
-}'
+
 }
 
 # Store original arguments
@@ -118,6 +96,64 @@ select_transaction_type() {
     done
 }
 
+# Function to validate required parameters for each transaction type
+validate_required_params() {
+    local tx_type="$1"
+    local tx_params="$2"
+    local missing_params=()
+
+    case "$tx_type" in
+        "publish")
+            if ! echo "$tx_params" | jq -e '.directory' >/dev/null 2>&1; then
+                missing_params+=("directory")
+            fi
+            ;;
+        "call")
+            if ! echo "$tx_params" | jq -e '.package' >/dev/null 2>&1; then
+                missing_params+=("package")
+            fi
+            if ! echo "$tx_params" | jq -e '.module' >/dev/null 2>&1; then
+                missing_params+=("module")
+            fi
+            if ! echo "$tx_params" | jq -e '.function' >/dev/null 2>&1; then
+                missing_params+=("function")
+            fi
+            # TODO: args is optional, but maybe we should require an array that can be empty?
+            # if ! echo "$tx_params" | jq -e '.args' >/dev/null 2>&1; then
+            #     missing_params+=("args")
+            # fi
+            # TODO: type-args is not implemented yet. also its optional
+            # fi
+            # if ! echo "$tx_params" | jq -e '.type-args' >/dev/null 2>&1; then
+            #     missing_params+=("type-args")
+            # fi
+            ;;
+        "transfer")
+            if ! echo "$tx_params" | jq -e '.recipient' >/dev/null 2>&1; then
+                missing_params+=("recipient")
+            fi
+            if ! echo "$tx_params" | jq -e '.object' >/dev/null 2>&1; then
+                missing_params+=("object")
+            fi
+            ;;
+        "upgrade")
+            if ! echo "$tx_params" | jq -e '.package' >/dev/null 2>&1; then
+                missing_params+=("package")
+            fi
+            if ! echo "$tx_params" | jq -e '.directory' >/dev/null 2>&1; then
+                missing_params+=("directory")
+            fi
+            ;;
+    esac
+
+    if [ ${#missing_params[@]} -gt 0 ]; then
+        echo "❌ Missing required parameters for $tx_type transaction:"
+        echo "   Required parameters: ${missing_params[*]}"
+        return 1
+    fi
+    return 0
+}
+
 # Function to process batch file
 process_batch_file() {
     local batch_file="$1"
@@ -159,6 +195,12 @@ process_batch_file() {
         fi
 
         echo -e "\n🔄 Processing transaction $((i+1))/$tx_count (type: $tx_type)..."
+
+        # Validate required parameters
+        if ! validate_required_params "$tx_type" "$tx_params"; then
+            results+=("❌ $tx_type (missing required parameters)")
+            continue
+        fi
 
         # Convert JSON params to command line arguments
         local args=()

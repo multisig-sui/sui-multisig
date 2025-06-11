@@ -5,7 +5,8 @@
             "params": {
                 "directory": "/home/arjan/git/hack/sui/scaffold-sui/packages/move"
             }
-        },
+        }
+        ,
         {
             "type": "call",
             "params": {
