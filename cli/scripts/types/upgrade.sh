@@ -27,7 +27,6 @@ eval set -- "$TEMP"
 # Initialize variables
 PACKAGE_DIR=""
 UPGRADE_CAPABILITY=""
-MULTISIG_ADDR=""
 
 # Process options
 while true; do
@@ -75,9 +74,10 @@ prompt_upgrade_capability() {
     done
 }
 
-# Check if MULTISIG_ADDR is set
+# Check if MULTISIG_ADDR is set (should be set by parent script)
 if [ -z "$MULTISIG_ADDR" ]; then
-    select_multisig_wallet
+    echo "❌ Error: MULTISIG_ADDR environment variable not set"
+    exit 1
 fi
 
 # If package directory not provided, prompt for it

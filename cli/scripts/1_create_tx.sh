@@ -42,11 +42,11 @@ show_usage() {
     echo "Options:"
     echo "  -t, --type TYPE        Transaction type (${VALID_TYPES[*]})"
     echo "  -b, --batch-file FILE  Create multiple transactions from JSON file"
+    echo "  -m, --multisig ADDR    Multisig wallet address"
     echo "  -h, --help             Show this help message"
     echo ""
     echo "Additional options will be passed to the transaction type script."
     echo "Run the specific transaction type script with --help to see its options."
-
 }
 
 # Store original arguments
@@ -55,6 +55,7 @@ ORIGINAL_ARGS=("$@")
 # Initialize variables
 TRANSACTION_TYPE=""
 BATCH_FILE=""
+MULTISIG_ADDR=""
 
 # Simple argument parsing for type and help
 while [[ $# -gt 0 ]]; do
@@ -65,6 +66,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -b|--batch-file)
             BATCH_FILE="$2"
+            shift 2
+            ;;
+        -m|--multisig)
+            MULTISIG_ADDR="$2"
             shift 2
             ;;
         -h|--help)
@@ -157,6 +162,7 @@ validate_required_params() {
 # Function to process batch file
 process_batch_file() {
     local batch_file="$1"
+    local cli_multisig="$2"  # Multisig address from command line, if any
 
     # Check if file exists
     if [ ! -f "$batch_file" ]; then
@@ -174,6 +180,35 @@ process_batch_file() {
     if ! jq -e '.transactions' "$batch_file" >/dev/null 2>&1; then
         echo "❌ Error: Batch file must contain a 'transactions' array"
         exit 1
+    fi
+
+    # Get multisig from JSON if present
+    local json_multisig
+    json_multisig=$(jq -r '.multisig // empty' "$batch_file")
+
+    # Handle multisig precedence
+    if [ -n "$cli_multisig" ] && [ -n "$json_multisig" ]; then
+        if [ "$cli_multisig" != "$json_multisig" ]; then
+            echo "❌ Error: Conflicting multisig addresses specified:"
+            echo "    CLI value:  $cli_multisig"
+            echo "    JSON value: $json_multisig"
+            echo "This likely indicates an error in either the CLI argument or the JSON file."
+            echo "Please ensure both values match or specify the multisig address in only one place."
+            exit 1
+        fi
+        export MULTISIG_ADDR="$cli_multisig"
+    elif [ -n "$cli_multisig" ]; then
+        export MULTISIG_ADDR="$cli_multisig"
+    elif [ -n "$json_multisig" ]; then
+        if ! validate_hex_address "$json_multisig"; then
+            echo "❌ Error: Invalid multisig address in JSON file: $json_multisig"
+            exit 1
+        fi
+        export MULTISIG_ADDR="$json_multisig"
+        echo "📦 Using multisig address from JSON: $json_multisig"
+    else
+        # No multisig specified anywhere, prompt for selection
+        select_multisig_wallet
     fi
 
     # Process each transaction
@@ -194,7 +229,7 @@ process_batch_file() {
             continue
         fi
 
-        echo -e "\n🔄 Processing transaction $((i+1))/$tx_count (type: $tx_type)..."
+        echo "🔄 Processing transaction $((i+1))/$tx_count (type: $tx_type)..."
 
         # Validate required parameters
         if ! validate_required_params "$tx_type" "$tx_params"; then
@@ -210,25 +245,14 @@ process_batch_file() {
             args+=("--$param_name" "$param_value")
         done < <(echo "$tx_params" | jq -c 'to_entries | map({key: .key, value: .value}) | .[]')
 
-        # Execute the transaction
-        export MULTISIG_ADDR
-        if ! "$SCRIPT_DIR/types/$tx_type.sh" "${args[@]}"; then
+        # Execute the transaction and capture output
+        local tx_output
+        if ! tx_output=$("$SCRIPT_DIR/types/$tx_type.sh" "${args[@]}" 2>&1); then
             echo "❌ Transaction $((i+1)) failed"
-            # Get the error output
-            local error_output
-            error_output=$("$SCRIPT_DIR/types/$tx_type.sh" "${args[@]}" 2>&1)
-            if echo "$error_output" | grep -q "unrecognized option"; then
-                echo "   Invalid option provided. Available options for $tx_type:"
-                echo "   ----------------------------------------"
-                "$SCRIPT_DIR/types/$tx_type.sh" --help | grep -v "Usage:" | grep -v "^$" | sed 's/^/   /'
-                echo "   ----------------------------------------"
-            else
-                echo "   Error: $error_output"
-            fi
             results+=("❌ $tx_type")
         else
-            echo "✅ Transaction $((i+1)) completed successfully"
-            results+=("✅ $tx_type")
+            echo "✅ Transaction $((i+1)) created successfully"
+            results+=("✅ $tx_type $tx_params")
         fi
     done
 
@@ -265,7 +289,7 @@ process_batch_file() {
 
 # If batch file is specified, process it
 if [ -n "$BATCH_FILE" ]; then
-    process_batch_file "$BATCH_FILE"
+    process_batch_file "$BATCH_FILE" "$MULTISIG_ADDR"
     exit 0
 fi
 
@@ -281,12 +305,18 @@ if [[ ! " ${VALID_TYPES[@]} " =~ " ${TRANSACTION_TYPE} " ]]; then
     exit 1
 fi
 
-# Filter out type-related arguments from ORIGINAL_ARGS
+# If no multisig address specified, prompt for selection
+if [ -z "$MULTISIG_ADDR" ]; then
+    select_multisig_wallet
+fi
+
+# Filter out type, batch, and multisig related arguments from ORIGINAL_ARGS
 FILTERED_ARGS=()
 i=0
 while [ $i -lt ${#ORIGINAL_ARGS[@]} ]; do
     if [[ "${ORIGINAL_ARGS[$i]}" == "-t" || "${ORIGINAL_ARGS[$i]}" == "--type" ]] ||
-       [[ "${ORIGINAL_ARGS[$i]}" == "-b" || "${ORIGINAL_ARGS[$i]}" == "--batch-file" ]]; then
+       [[ "${ORIGINAL_ARGS[$i]}" == "-b" || "${ORIGINAL_ARGS[$i]}" == "--batch-file" ]] ||
+       [[ "${ORIGINAL_ARGS[$i]}" == "-m" || "${ORIGINAL_ARGS[$i]}" == "--multisig" ]]; then
         # Skip the argument and its value
         i=$((i + 2))
     else

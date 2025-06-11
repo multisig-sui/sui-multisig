@@ -27,7 +27,6 @@ eval set -- "$TEMP"
 # Initialize variables
 RECIPIENT=""
 OBJECT_ID=""
-MULTISIG_ADDR=""
 
 # Process options
 while true; do
@@ -85,9 +84,10 @@ if [ -z "$OBJECT_ID" ]; then
     prompt_object
 fi
 
-# Check if MULTISIG_ADDR is set
+# Check if MULTISIG_ADDR is set (should be set by parent script)
 if [ -z "$MULTISIG_ADDR" ]; then
-    select_multisig_wallet
+    echo "❌ Error: MULTISIG_ADDR environment variable not set"
+    exit 1
 fi
 
 # Build and execute the Sui CLI command

@@ -1,4 +1,5 @@
 {
+    "multisig": "0x5529af337e38cab4ff1522d3cbc2406e265d5aad26394fdbceff9733699bd369",
     "transactions": [
         {
             "type": "publish",

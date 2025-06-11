@@ -25,7 +25,6 @@ eval set -- "$TEMP"
 
 # Initialize variables
 PACKAGE_DIR=""
-MULTISIG_ADDR=""
 
 # Process options
 while true; do
@@ -64,9 +63,10 @@ if [ -z "$PACKAGE_DIR" ]; then
     prompt_package_dir
 fi
 
-# Check if MULTISIG_ADDR is set
+# Check if MULTISIG_ADDR is set (should be set by parent script)
 if [ -z "$MULTISIG_ADDR" ]; then
-    select_multisig_wallet
+    echo "❌ Error: MULTISIG_ADDR environment variable not set"
+    exit 1
 fi
 
 # Build and execute the Sui CLI command

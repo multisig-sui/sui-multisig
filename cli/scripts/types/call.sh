@@ -30,7 +30,6 @@ eval set -- "$TEMP"
 PACKAGE_ADDRESS=""
 MODULE_NAME=""
 FUNCTION_NAME=""
-MULTISIG_ADDR=""
 ARGS=()
 
 # Process options
@@ -46,10 +45,6 @@ while true; do
             ;;
         -f|--function)
             FUNCTION_NAME="$2"
-            shift 2
-            ;;
-        -ms|--multisig)
-            MULTISIG_ADDR="$2"
             shift 2
             ;;
         -a|--args)
@@ -203,9 +198,10 @@ prompt_arguments() {
     fi
 }
 
-# Check if MULTISIG_ADDR is set
+# Check if MULTISIG_ADDR is set (should be set by parent script)
 if [ -z "$MULTISIG_ADDR" ]; then
-    select_multisig_wallet
+    echo "❌ Error: MULTISIG_ADDR environment variable not set"
+    exit 1
 fi
 
 # If package address not provided, prompt for it
