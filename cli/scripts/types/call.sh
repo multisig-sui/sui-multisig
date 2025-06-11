@@ -238,17 +238,15 @@ if [ ${#ARGS[@]} -gt 0 ]; then
 fi
 
 # Generate transaction data
-TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data")
+TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data" 2>/dev/null)
+
 if [ $? -ne 0 ]; then
+    echo "$TRANSACTION_DATA"
     exit 1
 fi
 
 # Store the transaction data
 echo "✅ Transaction data generated successfully"
-echo "📦 Package address: $PACKAGE_ADDRESS"
-echo "🔑 Module: $MODULE_NAME"
-echo "🔑 Function: $FUNCTION_NAME"
-echo "🔑 Multisig address: $MULTISIG_ADDR"
 
 if [ ${#ARGS[@]} -gt 0 ]; then
     echo "📝 Function arguments:"

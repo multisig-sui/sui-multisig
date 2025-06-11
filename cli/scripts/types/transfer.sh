@@ -92,16 +92,15 @@ fi
 
 # Build and execute the Sui CLI command
 CMD="sui client transfer --to $RECIPIENT --object-id $OBJECT_ID --serialize-unsigned-transaction --sender $MULTISIG_ADDR"
-TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data")
+TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data" 2>/dev/null)
+
 if [ $? -ne 0 ]; then
+    echo "$TRANSACTION_DATA"
     exit 1
 fi
 
 # Store the transaction data
 echo "✅ Transaction data generated successfully"
-echo "📦 Recipient address: $RECIPIENT"
-echo "🔑 Object ID: $OBJECT_ID"
-echo "🔑 Multisig address: $MULTISIG_ADDR"
 
 # Save the transaction data
 save_transaction_data "$TRANSACTION_DATA" "transfer" "$RECIPIENT"

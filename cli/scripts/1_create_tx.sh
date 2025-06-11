@@ -199,11 +199,12 @@ process_batch_file() {
             exit 1
         fi
         export MULTISIG_ADDR="$json_multisig"
-        echo "📦 Using multisig address from JSON: $json_multisig"
     else
         # No multisig specified anywhere, prompt for selection
         select_multisig_wallet
     fi
+
+    echo "📦 Using multisig address: $MULTISIG_ADDR"
 
     # Process each transaction
     local tx_count=$(jq '.transactions | length' "$batch_file")
@@ -320,6 +321,6 @@ while [ $i -lt ${#ORIGINAL_ARGS[@]} ]; do
 done
 
 # Execute the appropriate transaction type script with filtered arguments and multisig address
-echo -e "\n🔄 Executing $TRANSACTION_TYPE transaction..."
+echo -e "\n🔄 Creating $TRANSACTION_TYPE transaction..."
 export MULTISIG_ADDR
 "$SCRIPT_DIR/types/$TRANSACTION_TYPE.sh" "${FILTERED_ARGS[@]}"
