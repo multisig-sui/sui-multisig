@@ -35,8 +35,8 @@ show_usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
     echo "  -t, --type TYPE        Transaction type (${VALID_TYPES[*]})"
-    echo "  -b, --batch-file FILE  Create multiple transactions from JSON file"
-    echo "  -m, --multisig ADDR    Multisig wallet address"
+    echo "  -b, --batch FILE  Create multiple transactions from JSON file"
+    echo "  -ms, --multisig ADDR    Multisig wallet address"
     echo "  -h, --help             Show this help message"
     echo ""
     echo "Additional options will be passed to the transaction type script."
@@ -58,11 +58,11 @@ while [[ $# -gt 0 ]]; do
             TRANSACTION_TYPE="$2"
             shift 2
             ;;
-        -b|--batch-file)
+        -b|--batch)
             BATCH_FILE="$2"
             shift 2
             ;;
-        -m|--multisig)
+        -ms|--multisig)
             MULTISIG_ADDR="$2"
             shift 2
             ;;

@@ -265,11 +265,7 @@ else
             echo "⚠️ Original faucet error: $FAUCET_RESPONSE"
             echo "Continuing with setup..."
         else
-            # Determine amount to send (minimum of 0.1 SUI or available balance)
             AMOUNT_TO_SEND=100000000  # 0.1 SUI in MIST
-            if [ "$BALANCE" -lt "$AMOUNT_TO_SEND" ]; then
-                AMOUNT_TO_SEND=$BALANCE
-            fi
 
             # Send funds to multisig address
             echo "🔄 Sending $AMOUNT_TO_SEND MIST to multisig address..."
