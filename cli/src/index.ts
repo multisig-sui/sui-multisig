@@ -101,6 +101,7 @@ program
   .command('create')
   .description('Create a new transaction')
   .option('-t, --type <type>', 'Transaction type (publish|upgrade|call|transfer)')
+  .option('-b, --batch-file <file>', 'Create multiple transactions from JSON file')
   .option('-d, --directory <dir>', 'Package directory for publish')
   .option('-p, --package <address>', 'Package address for call')
   .option('-m, --module <name>', 'Module name for call')

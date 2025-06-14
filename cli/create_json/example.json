@@ -1,0 +1,20 @@
+{
+    "multisig": "0x5529af337e38cab4ff1522d3cbc2406e265d5aad26394fdbceff9733699bd369",
+    "transactions": [
+        {
+            "type": "publish",
+            "params": {
+                "directory": "/home/arjan/git/hack/sui/scaffold-sui/packages/move"
+            }
+        }
+        ,
+        {
+            "type": "call",
+            "params": {
+                "package": "0xcde8785962a9050710e2f884dd350ff3aaa48f677465789c7abc5940596e109a",
+                "module": "counter",
+                "function": "create"
+            }
+        }
+    ]
+}

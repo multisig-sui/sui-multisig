@@ -30,7 +30,6 @@ eval set -- "$TEMP"
 PACKAGE_ADDRESS=""
 MODULE_NAME=""
 FUNCTION_NAME=""
-MULTISIG_ADDR=""
 ARGS=()
 
 # Process options
@@ -46,10 +45,6 @@ while true; do
             ;;
         -f|--function)
             FUNCTION_NAME="$2"
-            shift 2
-            ;;
-        -ms|--multisig)
-            MULTISIG_ADDR="$2"
             shift 2
             ;;
         -a|--args)
@@ -153,12 +148,10 @@ prompt_arguments() {
     fi
 
     # Try different patterns to find the function
-    echo "🔍 Searching for function definition..."
     FUNCTION_PATTERN="entry public $FUNCTION_NAME"
     FUNCTION_LINE=$(echo "$MODULE_CONTENT" | grep -n "$FUNCTION_PATTERN" | cut -d: -f1)
 
     if [ -n "$FUNCTION_LINE" ]; then
-        echo "📍 Found function at line $FUNCTION_LINE"
         # Get the function definition and the next few lines for context
         CONTEXT_LINES=$(echo "$MODULE_CONTENT" | tail -n "+$FUNCTION_LINE" | head -n 5)
 
@@ -205,9 +198,10 @@ prompt_arguments() {
     fi
 }
 
-# Check if MULTISIG_ADDR is set
+# Check if MULTISIG_ADDR is set (should be set by parent script)
 if [ -z "$MULTISIG_ADDR" ]; then
-    select_multisig_wallet
+    echo "❌ Error: MULTISIG_ADDR environment variable not set"
+    exit 1
 fi
 
 # If package address not provided, prompt for it
@@ -244,17 +238,15 @@ if [ ${#ARGS[@]} -gt 0 ]; then
 fi
 
 # Generate transaction data
-TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data")
+TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data" 2>/dev/null)
+
 if [ $? -ne 0 ]; then
+    echo "$TRANSACTION_DATA"
     exit 1
 fi
 
 # Store the transaction data
 echo "✅ Transaction data generated successfully"
-echo "📦 Package address: $PACKAGE_ADDRESS"
-echo "🔑 Module: $MODULE_NAME"
-echo "🔑 Function: $FUNCTION_NAME"
-echo "🔑 Multisig address: $MULTISIG_ADDR"
 
 if [ ${#ARGS[@]} -gt 0 ]; then
     echo "📝 Function arguments:"

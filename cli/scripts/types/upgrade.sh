@@ -27,7 +27,6 @@ eval set -- "$TEMP"
 # Initialize variables
 PACKAGE_DIR=""
 UPGRADE_CAPABILITY=""
-MULTISIG_ADDR=""
 
 # Process options
 while true; do
@@ -75,9 +74,10 @@ prompt_upgrade_capability() {
     done
 }
 
-# Check if MULTISIG_ADDR is set
+# Check if MULTISIG_ADDR is set (should be set by parent script)
 if [ -z "$MULTISIG_ADDR" ]; then
-    select_multisig_wallet
+    echo "❌ Error: MULTISIG_ADDR environment variable not set"
+    exit 1
 fi
 
 # If package directory not provided, prompt for it
@@ -92,16 +92,16 @@ fi
 
 # Build and execute the Sui CLI command
 CMD="sui client upgrade --upgrade-capability $UPGRADE_CAPABILITY \"$PACKAGE_DIR\" --serialize-unsigned-transaction --sender $MULTISIG_ADDR"
-TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data")
+echo "📦 Compiling package..."
+TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data" 2>/dev/null)
+
 if [ $? -ne 0 ]; then
+    echo "$TRANSACTION_DATA"
     exit 1
 fi
 
 # Store the transaction data
 echo "✅ Transaction data generated successfully"
-echo "📦 Package directory: $PACKAGE_DIR"
-echo "🔑 Upgrade capability: $UPGRADE_CAPABILITY"
-echo "🔑 Multisig address: $MULTISIG_ADDR"
 
 # Save the transaction data
 save_transaction_data "$TRANSACTION_DATA" "upgrade" "$(basename "$PACKAGE_DIR")"
