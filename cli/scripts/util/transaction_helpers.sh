@@ -257,7 +257,8 @@ select_multisig_wallet() {
         fi
     done
 
-    echo -e "\n💼 Using multisig wallet: MULTISIG_ADDR"
+    echo -e "\n💼 Using multisig wallet: $(basename "$CONFIG_FILE")"
+    echo "📦 Address: $MULTISIG_ADDR"
     echo "🔐 Threshold: $(echo "$CONFIG_CONTENT" | jq -r '.threshold')"
     echo "👥 Signers: $(echo "$CONFIG_CONTENT" | jq -r '.multisig | length')"
 }
