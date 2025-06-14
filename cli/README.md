@@ -18,13 +18,7 @@ You can install the Sui Multisig CLI tool globally using npm:
 npm install -g sui-multisig-cli
 ```
 
-Or use it directly with pnpm:
-
-```bash
-pnpm start
-```
-
-In the instructions below we assume you are usint the installed `sui-multisig-cli`.
+If you want to run the scripts without installing the tool, see the adjusted instructions [here](docs/bash-scripts.md).
 
 ## Initial setup
 
