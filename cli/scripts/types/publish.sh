@@ -71,17 +71,16 @@ fi
 
 # Build and execute the Sui CLI command
 CMD="sui client publish \"$PACKAGE_DIR\" --serialize-unsigned-transaction --sender $MULTISIG_ADDR"
-TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data")
+echo "📦 Compiling package..."
+TRANSACTION_DATA=$(execute_command "$CMD" "Failed to generate transaction data" 2>/dev/null)
+
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to generate transaction data"
-    echo "❌ $TRANSACTION_DATA"
+    echo "$TRANSACTION_DATA"
     exit 1
 fi
 
 # Store the transaction data
 echo "✅ Transaction data generated successfully"
-echo "📦 Package directory: $PACKAGE_DIR"
-echo "🔑 Multisig address: $MULTISIG_ADDR"
 
 # Save the transaction data
 save_transaction_data "$TRANSACTION_DATA" "publish" "$(basename "$PACKAGE_DIR")"
