@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name('sui-multisig')
   .description('CLI tool for managing Sui multisig operations')
-  .version('1.3.1');
+  .version('1.3.2');
 
 // Helper function to get the config directory and ensure required subdirectories exist
 function getConfigDir(): string {
@@ -66,6 +66,8 @@ function runScript(scriptName: string, args: string[] = []): void {
     } else if (errorMessage.includes('No transactions directory found')) {
       console.error(chalk.yellow('\n⚠️  No transactions directory found.'));
       console.error(chalk.yellow('   Create a transaction first using: sui-multisig create'));
+    } else if (errorMessage.includes('Conflicting multisig addresses')) {
+      console.error(chalk.red('\n❌ Conflicting multisig addresses found'));
     } else {
       // For other errors, show a generic error message
       console.error(chalk.red('\n❌ An error occurred:'));
@@ -101,7 +103,8 @@ program
   .command('create')
   .description('Create a new transaction')
   .option('-t, --type <type>', 'Transaction type (publish|upgrade|call|transfer)')
-  .option('-b, --batch-file <file>', 'Create multiple transactions from JSON file')
+  .option('-b, --batch <file>', 'Create multiple transactions from JSON file')
+  .option('-ms, --multisig <address>', 'Multisig wallet address')
   .option('-d, --directory <dir>', 'Package directory for publish')
   .option('-p, --package <address>', 'Package address for call')
   .option('-m, --module <name>', 'Module name for call')
