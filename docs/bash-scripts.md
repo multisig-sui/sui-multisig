@@ -77,7 +77,7 @@ If no type is specified, the script will prompt you to select one interactively.
 bash ./scripts/2_approve_tx.sh
 ```
 
-Call this script with the `--sequence-number <n>` flag to approve/reject a specific transaction. Otherwise it will print an overview of transactions and prompt you to input the sequence number of the one to approve/reject.
+This script will print an overview of transactions and prompt you to input the number of the transaction to approve/reject.
 
 ### 3. Execute transaction
 

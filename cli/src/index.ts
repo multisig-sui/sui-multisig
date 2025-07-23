@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name('sui-multisig')
   .description('CLI tool for managing Sui multisig operations')
-  .version('1.3.3');
+  .version('1.4.1');
 
 // Helper function to get the config directory and ensure required subdirectories exist
 function getConfigDir(): string {
@@ -88,10 +88,18 @@ interface CreateOptions {
   args?: string;
   recipient?: string;
   object?: string;
+  multisig?: string;
 }
 
 interface ApproveOptions {
-  sequence?: string;
+  transaction?: string;
+  multisig?: string;
+  signer?: string;
+}
+
+interface ExecuteOptions {
+  transaction?: string;
+  multisig?: string;
 }
 
 program
@@ -122,15 +130,28 @@ program
 program
   .command('approve')
   .description('Approve or reject a transaction')
-  .option('-s, --sequence <number>', 'Transaction sequence number')
+  .option('-tx, --transaction <dir>', 'Transaction directory')
+  .option('-ms, --multisig <address>', 'Multisig wallet address')
+  .option('-s, --signer <address>', 'Signer address to use for approval')
+  .option('-y, --assume-yes', 'Automatically answer yes to prompts')
   .action((options: ApproveOptions) => {
-    const args = options.sequence ? [`--sequence-number ${options.sequence}`] : [];
+    const args = Object.entries(options)
+      .filter(([_, value]) => value !== undefined)
+      .map(([key, value]) => `--${key} ${value}`);
     runScript('2_approve_tx.sh', args);
   });
 
 program
   .command('execute')
   .description('Execute an approved transaction')
-  .action(() => runScript('3_execute_tx.sh'));
+  .option('-tx, --transaction <dir>', 'Transaction directory')
+  .option('-ms, --multisig <address>', 'Multisig wallet address')
+  .option('-y, --assume-yes', 'Automatically answer yes to prompts')
+  .action((options: ExecuteOptions) => {
+    const args = Object.entries(options)
+      .filter(([_, value]) => value !== undefined)
+      .map(([key, value]) => `--${key} ${value}`);
+    runScript('3_execute_tx.sh', args);
+  });
 
 program.parse();

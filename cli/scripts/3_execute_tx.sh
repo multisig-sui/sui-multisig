@@ -1,5 +1,37 @@
 #!/bin/bash
 
+# Source the helper script
+SCRIPT_DIR="$SUI_MULTISIG_SCRIPTS_DIR"
+source "$SCRIPT_DIR/util/transaction_helpers.sh"
+
+# Initialize variables
+MULTISIG_ADDR=""
+TX_DIR=""
+ORIGINAL_ARGS=("$@")
+ASSUME_YES=0
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -ms|--multisig)
+            MULTISIG_ADDR="$2"
+            export MULTISIG_ADDR
+            shift 2
+            ;;
+        -tx|--transaction)
+            TX_DIR="$2"
+            shift 2
+            ;;
+        -y|--assume-yes)
+            ASSUME_YES=1
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
 # Check if required environment variables are set
 if [ -z "$SUI_MULTISIG_CONFIG_DIR" ] || [ -z "$SUI_MULTISIG_MULTISIGS_DIR" ] || [ -z "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
     echo "❌ Error: Required environment variables not set"
@@ -7,67 +39,8 @@ if [ -z "$SUI_MULTISIG_CONFIG_DIR" ] || [ -z "$SUI_MULTISIG_MULTISIGS_DIR" ] || 
     exit 1
 fi
 
-# Check if multisigs directory exists
-if [ ! -d "$SUI_MULTISIG_MULTISIGS_DIR" ]; then
-    echo "❌ Error: No multisigs directory found in ~/.sui-multisig"
-    echo "Please run sui-multisig setup first to create a multisig wallet"
-    exit 1
-fi
-
-# Find all JSON files in multisigs directory
-CONFIG_FILES=("$SUI_MULTISIG_MULTISIGS_DIR"/*.json)
-if [ ! -f "${CONFIG_FILES[0]}" ]; then
-    echo "❌ Error: No multisig wallets found in ~/.sui-multisig/multisigs"
-    echo "Please run sui-multisig setup first to create a multisig wallet"
-    exit 1
-fi
-
-# Display available multisig wallets with details
-echo "📋 Available multisig wallets:"
-echo "------------------------"
-for i in "${!CONFIG_FILES[@]}"; do
-    if [ -f "${CONFIG_FILES[$i]}" ]; then
-        # Clean and parse the JSON file
-        WALLET_DATA=$(tr -d '\n' < "${CONFIG_FILES[$i]}" | jq -c '.' 2>/dev/null)
-        if [ $? -eq 0 ] && [ -n "$WALLET_DATA" ]; then
-            MULTISIG_ADDR=$(echo "$WALLET_DATA" | jq -r '.multisigAddress')
-            THRESHOLD=$(echo "$WALLET_DATA" | jq -r '.threshold')
-            SIGNER_COUNT=$(echo "$WALLET_DATA" | jq -r '.multisig | length')
-            echo "[$i] $(basename "${CONFIG_FILES[$i]}")"
-            echo "    └─ $MULTISIG_ADDR (threshold: $THRESHOLD, signers: $SIGNER_COUNT)"
-        else
-            echo "[$i] $(basename "${CONFIG_FILES[$i]}") (invalid config)"
-        fi
-    fi
-done
-echo "------------------------"
-
-# Prompt user to select a multisig wallet
-while true; do
-    read -p "Select multisig wallet number: " selection
-    if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -lt "${#CONFIG_FILES[@]}" ]; then
-        CONFIG_FILE="${CONFIG_FILES[$selection]}"
-        if [ -f "$CONFIG_FILE" ]; then
-            # Clean and validate JSON
-            CONFIG_CONTENT=$(tr -d '\n' < "$CONFIG_FILE" | jq -c '.' 2>/dev/null)
-            if [ $? -ne 0 ]; then
-                echo "❌ Error: Invalid JSON in config file"
-                exit 1
-            fi
-
-            break
-        else
-            echo "❌ Error: Selected config file not found"
-        fi
-    else
-        echo "❌ Invalid selection. Please enter a number between 0 and $((${#CONFIG_FILES[@]}-1))"
-    fi
-done
-
-echo -e "\n💼 Using multisig wallet: $(basename "$CONFIG_FILE")"
-echo "📦 Address: $(echo "$CONFIG_CONTENT" | jq -r .multisigAddress)"
-echo "🔐 Threshold: $(echo "$CONFIG_CONTENT" | jq -r .threshold)"
-echo "👥 Signers: $(echo "$CONFIG_CONTENT" | jq -r '.multisig | length')"
+# Use select_multisig_wallet to select the wallet (sets CONFIG_FILE, CONFIG_CONTENT, MULTISIG_ADDR)
+select_multisig_wallet
 
 # Check if transactions directory exists
 if [ ! -d "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
@@ -77,35 +50,64 @@ fi
 
 # List all transaction directories
 TX_DIRS=("$SUI_MULTISIG_TRANSACTIONS_DIR"/tx_*)
-if [ ${#TX_DIRS[@]} -eq 0 ] || [ ! -d "${TX_DIRS[0]}" ]; then
-    echo "Error: No transactions found in ~/.sui-multisig/transactions"
-    exit 1
+
+# Filter TX_DIRS to only those where the sender matches MULTISIG_ADDR
+if [ -n "$MULTISIG_ADDR" ]; then
+    FILTERED_TX_DIRS=()
+    for tx_dir in "${TX_DIRS[@]}"; do
+        TX_BYTES_FILE="$tx_dir/tx_bytes"
+        if [ -f "$TX_BYTES_FILE" ]; then
+            SENDER=$(sui keytool decode-or-verify-tx --tx-bytes "$(cat "$TX_BYTES_FILE")" --json 2>/dev/null | jq -r '.tx.V1.sender // empty')
+            if [ "$SENDER" = "$MULTISIG_ADDR" ]; then
+                FILTERED_TX_DIRS+=("$tx_dir")
+            fi
+        fi
+    done
+    TX_DIRS=("${FILTERED_TX_DIRS[@]}")
 fi
 
-# Display available transactions
-echo -e "\n📋 Available transactions:"
-echo "------------------------"
-for i in "${!TX_DIRS[@]}"; do
-    echo "[$i] $(basename "${TX_DIRS[$i]}")"
-done
-echo "------------------------"
-
-# Prompt user to select a transaction
-while true; do
-    read -p "Select transaction number: " selection
-    if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -lt "${#TX_DIRS[@]}" ]; then
-        TX_DIR="${TX_DIRS[$selection]}"
-        break
+# If TX_DIR is provided, resolve to full path if needed
+if [ -n "$TX_DIR" ]; then
+    if [ -d "$TX_DIR" ]; then
+        :
+    elif [ -d "$SUI_MULTISIG_TRANSACTIONS_DIR/$TX_DIR" ]; then
+        TX_DIR="$SUI_MULTISIG_TRANSACTIONS_DIR/$TX_DIR"
     else
-        echo "❌ Invalid selection. Please enter a number between 0 and $((${#TX_DIRS[@]}-1))"
+        echo "Error: Transaction directory not found: $TX_DIR"
+        exit 1
     fi
-done
-
-# Get the transaction bytes
-TX_BYTES_FILE="$TX_DIR/tx_bytes"
-if [ ! -f "$TX_BYTES_FILE" ]; then
-    echo "Error: Transaction bytes file not found: $TX_BYTES_FILE"
-    exit 1
+    TX_BYTES_FILE="$TX_DIR/tx_bytes"
+    if [ ! -f "$TX_BYTES_FILE" ]; then
+        echo "Error: Transaction bytes file not found: $TX_BYTES_FILE"
+        exit 1
+    fi
+else
+    if [ ${#TX_DIRS[@]} -eq 0 ] || [ ! -d "${TX_DIRS[0]}" ]; then
+        echo "Error: No transactions found in ~/.sui-multisig/transactions"
+        exit 1
+    fi
+    # Display available transactions
+    echo -e "\n📋 Available transactions:"
+    echo "------------------------"
+    for i in "${!TX_DIRS[@]}"; do
+        echo "[$i] $(basename "${TX_DIRS[$i]}")"
+    done
+    echo "------------------------"
+    # Prompt user to select a transaction
+    while true; do
+        read -p "Select transaction number: " selection
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -lt "${#TX_DIRS[@]}" ]; then
+            TX_DIR="${TX_DIRS[$selection]}"
+            break
+        else
+            echo "❌ Invalid selection. Please enter a number between 0 and $((${#TX_DIRS[@]}-1))"
+        fi
+    done
+    TX_BYTES_FILE="$TX_DIR/tx_bytes"
+    if [ ! -f "$TX_BYTES_FILE" ]; then
+        echo "Error: Transaction bytes file not found: $TX_BYTES_FILE"
+        exit 1
+    fi
 fi
 
 TX_BYTES=$(cat "$TX_BYTES_FILE")
@@ -184,6 +186,18 @@ echo "• Weight: $SIGNED_WEIGHT/$TOTAL_WEIGHT (threshold: $THRESHOLD)"
 if [ "$SIGNED_WEIGHT" -lt "$THRESHOLD" ]; then
     echo "❌ Not enough signatures (weight $SIGNED_WEIGHT < threshold $THRESHOLD)"
     exit 1
+fi
+
+# Confirm transaction
+if [ "$ASSUME_YES" -eq 1 ]; then
+    EXECUTE="y"
+    echo "Executing transaction"
+else
+    read -p "Do you want to execute this transaction? (y/N): " EXECUTE
+fi
+if [[ ! "$EXECUTE" =~ ^[Yy]$ ]]; then
+    echo "Transaction execution cancelled."
+    exit 0
 fi
 
 # Combine signatures

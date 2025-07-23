@@ -11,11 +11,12 @@ show_usage() {
     echo "Options:"
     echo "  -d, --directory DIRECTORY    Package directory path (required)"
     echo "  -c, --capability CAPABILITY  Upgrade capability object ID (required)"
+    echo "  -ms, --multisig ADDRESS      Multisig wallet address (optional)"
     echo "  -h, --help                   Show this help message"
 }
 
 # Parse command line arguments
-TEMP=$(getopt -o d:c:h --long directory:,capability:,help -n "$0" -- "$@")
+TEMP=$(getopt -o d:c:ms:h --long directory:,capability:,multisig:,help -n "$0" -- "$@")
 
 if [ $? != 0 ]; then
     show_usage
@@ -37,6 +38,10 @@ while true; do
             ;;
         -c|--capability)
             UPGRADE_CAPABILITY="$2"
+            shift 2
+            ;;
+        -ms|--multisig)
+            MULTISIG_ADDR="$2"
             shift 2
             ;;
         -h|--help)

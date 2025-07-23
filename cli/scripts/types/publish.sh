@@ -10,11 +10,12 @@ show_usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
     echo "  -d, --directory DIRECTORY    Package directory path (required)"
+    echo "  -ms, --multisig ADDRESS     Multisig wallet address (optional)"
     echo "  -h, --help                   Show this help message"
 }
 
 # Parse command line arguments
-TEMP=$(getopt -o d:h --long directory:,help -n "$0" -- "$@")
+TEMP=$(getopt -o d:ms:h --long directory:,multisig:,help -n "$0" -- "$@")
 
 if [ $? != 0 ]; then
     show_usage
@@ -31,6 +32,10 @@ while true; do
     case "$1" in
         -d|--directory)
             PACKAGE_DIR="$2"
+            shift 2
+            ;;
+        -ms|--multisig)
+            MULTISIG_ADDR="$2"
             shift 2
             ;;
         -h|--help)

@@ -45,6 +45,19 @@ The configuration is saved to a JSON file in the `transactions` directory for fu
 sui-multisig create [options]
 ```
 
+**Options:**
+
+- `-t, --type <type>`: Transaction type (`publish`, `upgrade`, `call`, or `transfer`)
+- `-b, --batch <file>`: Create multiple transactions from a JSON batch file
+- `-ms, --multisig <address>`: Multisig wallet address to use as sender
+- `-d, --directory <dir>`: Package directory for publish/upgrade
+- `-p, --package <address>`: Package address for call
+- `-m, --module <name>`: Module name for call
+- `-f, --function <name>`: Function name for call
+- `-a, --args <args>`: Arguments for call (space-separated string)
+- `-r, --recipient <address>`: Recipient address for transfer
+- `-o, --object <id>`: Object ID for transfer
+
 Creates a multisig transaction. The script supports four types of transactions:
 
 1. **Publish** - Deploy a new smart contract
@@ -58,7 +71,11 @@ Creates a multisig transaction. The script supports four types of transactions:
 
 2. **Upgrade** - Upgrade an existing smart contract
    ```bash
-   sui-multisig create -t upgrade
+   sui-multisig create -t upgrade -d <package_directory>
+   ```
+   Example:
+   ```bash
+   sui-multisig create -t upgrade -d ./my-contract
    ```
 
 3. **Call** - Call a function on a smart contract
@@ -84,18 +101,51 @@ If no type is specified, the script will prompt you to select one interactively.
 ### 2. Approve transaction
 
 ```bash
+sui-multisig approve [options]
+```
+
+**Options:**
+
+- `-tx, --transaction <dir>`: Specify the transaction directory (either just the name or full path)
+- `-ms, --multisig <address>`: Specify the multisig wallet address
+- `-s, --signer <address>`: Specify the signer address to use for approval
+- `-y, --assume-yes`: Automatically answer 'yes' to all prompts (non-interactive mode)
+
+**Examples:**
+
+Approve a transaction interactively:
+```bash
 sui-multisig approve
 ```
 
-Call this command with the `--sequence <n>` flag to approve/reject a specific transaction. Otherwise it will print an overview of transactions and prompt you to input the sequence number of the one to approve/reject.
+Approve a specific transaction non-interactively:
+```bash
+sui-multisig approve -tx tx_20250723_211214_call_counter_create -ms 0x... -s 0x... -y
+```
 
 ### 3. Execute transaction
 
 ```bash
+sui-multisig execute [options]
+```
+
+**Options:**
+
+- `-tx, --transaction <dir>`: Specify the transaction directory (either just the name or full path)
+- `-ms, --multisig <address>`: Specify the multisig wallet address
+- `-y, --assume-yes`: Automatically answer 'yes' to all prompts (non-interactive mode)
+
+**Examples:**
+
+Execute a transaction interactively:
+```bash
 sui-multisig execute
 ```
 
-Executes the next transaction in the multisig queue, given that is has sufficient approvals.
+Execute a specific transaction non-interactively:
+```bash
+sui-multisig execute -tx tx_20250723_211214_call_counter_create -ms 0x... -y
+```
 
 ## Configuration
 

@@ -11,11 +11,12 @@ show_usage() {
     echo "Options:"
     echo "  -r, --recipient RECIPIENT    Recipient address (required)"
     echo "  -o, --object OBJECT          Object ID to transfer (required)"
+    echo "  -ms, --multisig ADDRESS      Multisig wallet address (optional)"
     echo "  -h, --help                   Show this help message"
 }
 
 # Parse command line arguments
-TEMP=$(getopt -o r:o:h --long recipient:,object:,help -n "$0" -- "$@")
+TEMP=$(getopt -o r:o:ms:h --long recipient:,object:,multisig:,help -n "$0" -- "$@")
 
 if [ $? != 0 ]; then
     show_usage
@@ -37,6 +38,10 @@ while true; do
             ;;
         -o|--object)
             OBJECT_ID="$2"
+            shift 2
+            ;;
+        -ms|--multisig)
+            MULTISIG_ADDR="$2"
             shift 2
             ;;
         -h|--help)
