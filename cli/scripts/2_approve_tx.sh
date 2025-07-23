@@ -17,8 +17,40 @@ if [ ! -d "$SUI_MULTISIG_TRANSACTIONS_DIR" ]; then
     exit 1
 fi
 
+# Parse -ms/--multisig argument
+MULTISIG_ADDR=""
+ORIGINAL_ARGS=("$@")
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -ms|--multisig)
+            MULTISIG_ADDR="$2"
+            export MULTISIG_ADDR
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
 # List all transaction directories
 TX_DIRS=("$SUI_MULTISIG_TRANSACTIONS_DIR"/tx_*)
+
+# If MULTISIG_ADDR is set, filter TX_DIRS to only those matching the address
+if [ -n "$MULTISIG_ADDR" ]; then
+    FILTERED_TX_DIRS=()
+    for tx_dir in "${TX_DIRS[@]}"; do
+        if [ -f "$tx_dir/multisig_addr" ]; then
+            addr=$(cat "$tx_dir/multisig_addr")
+            if [ "$addr" = "$MULTISIG_ADDR" ]; then
+                FILTERED_TX_DIRS+=("$tx_dir")
+            fi
+        fi
+    done
+    TX_DIRS=("${FILTERED_TX_DIRS[@]}")
+fi
+
 if [ ${#TX_DIRS[@]} -eq 0 ] || [ ! -d "${TX_DIRS[0]}" ]; then
     echo "Error: No transactions found in ~/.sui-multisig/transactions"
     exit 1

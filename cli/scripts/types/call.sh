@@ -13,11 +13,12 @@ show_usage() {
     echo "  -m, --module MODULE      Module name (required)"
     echo "  -f, --function FUNCTION  Function name (required)"
     echo "  -a, --args ARGS          Function arguments (space separated)"
+    echo "  -ms, --multisig ADDRESS  Multisig wallet address (optional)"
     echo "  -h, --help               Show this help message"
 }
 
 # Parse command line arguments
-TEMP=$(getopt -o p:m:f:a:h --long package:,module:,function:,args:,help -n "$0" -- "$@")
+TEMP=$(getopt -o p:m:f:a:ms:h --long package:,module:,function:,args:,multisig:,help -n "$0" -- "$@")
 
 if [ $? != 0 ]; then
     show_usage

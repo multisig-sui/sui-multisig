@@ -88,10 +88,16 @@ interface CreateOptions {
   args?: string;
   recipient?: string;
   object?: string;
+  multisig?: string;
 }
 
 interface ApproveOptions {
-  sequence?: string;
+  transaction?: string;
+}
+
+interface ExecuteOptions {
+  transaction?: string;
+  multisig?: string;
 }
 
 program
@@ -122,15 +128,21 @@ program
 program
   .command('approve')
   .description('Approve or reject a transaction')
-  .option('-s, --sequence <number>', 'Transaction sequence number')
+  .option('-t, --transaction <number>', 'Transaction id')
+  .option('-ms, --multisig <address>', 'Multisig wallet address')
   .action((options: ApproveOptions) => {
-    const args = options.sequence ? [`--sequence-number ${options.sequence}`] : [];
+    const args = options.transaction ? [`--transaction ${options.transaction}`] : [];
     runScript('2_approve_tx.sh', args);
   });
 
 program
   .command('execute')
   .description('Execute an approved transaction')
-  .action(() => runScript('3_execute_tx.sh'));
+  .option('-t, --transaction <number>', 'Transaction id')
+  .option('-ms, --multisig <address>', 'Multisig wallet address')
+  .action((options: ExecuteOptions) => {
+    const args = options.transaction ? [`--transaction ${options.transaction}`] : [];
+    runScript('3_execute_tx.sh', args);
+  });
 
 program.parse();
