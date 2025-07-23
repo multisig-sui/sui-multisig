@@ -1,59 +1,50 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, ExternalLink, Plus, Clock, CheckCircle, XCircle, Users, Coins, Shield } from "lucide-react"
+import { Copy, ExternalLink, Plus, Clock, CheckCircle, XCircle, Users, Coins, Shield, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useRealtimeWallet } from "@/hooks/use-realtime-wallet"
+import { formatDistanceToNow } from "date-fns"
 
 interface VaultDashboardProps {
+  walletId?: string
   onViewTransaction: (id: string) => void
   onNavigate: (view: string) => void
 }
 
-export function VaultDashboard({ onViewTransaction, onNavigate }: VaultDashboardProps) {
+export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: VaultDashboardProps) {
   const [copiedAddress, setCopiedAddress] = useState(false)
+  
+  // Use real data if walletId is provided, otherwise use mock data
+  const { wallet, proposals, isLoading, error } = walletId 
+    ? useRealtimeWallet(walletId)
+    : { wallet: null, proposals: [], isLoading: false, error: null }
 
-  const walletData = {
+  // Mock data for when no walletId is provided
+  const mockWalletData = {
     address: "0x1234567890abcdef1234567890abcdef12345678",
     balance: "1,234.56",
-    threshold: { required: 2, total: 3 },
-    recentTransactions: [
-      {
-        id: "tx1",
-        type: "Send SUI",
-        amount: "100",
-        status: "pending",
-        signatures: 1,
-        required: 2,
-        timestamp: "2 hours ago",
-        recipient: "Alice",
-      },
-      {
-        id: "tx2",
-        type: "Contract Call",
-        amount: "0",
-        status: "executed",
-        signatures: 2,
-        required: 2,
-        timestamp: "1 day ago",
-        recipient: "DeFi Protocol",
-      },
-      {
-        id: "tx3",
-        type: "Send SUI",
-        amount: "50",
-        status: "failed",
-        signatures: 2,
-        required: 2,
-        timestamp: "3 days ago",
-        recipient: "Bob",
-      },
+    threshold: 2,
+    owners: [
+      { id: "1", name: "Alice", weight: 1 },
+      { id: "2", name: "Bob", weight: 1 },
+      { id: "3", name: "Charlie", weight: 1 },
     ],
   }
 
+  // Use real data if available, otherwise fall back to mock
+  const displayWallet = wallet || mockWalletData
+  const walletAddress = wallet?.address || mockWalletData.address
+  const threshold = wallet?.threshold || mockWalletData.threshold
+  const totalOwners = wallet?.owners?.length || mockWalletData.owners.length
+
+  // Get recent proposals (max 3)
+  const recentProposals = proposals.slice(0, 3)
+
   const copyAddress = () => {
-    navigator.clipboard.writeText(walletData.address)
+    navigator.clipboard.writeText(walletAddress)
     setCopiedAddress(true)
     setTimeout(() => setCopiedAddress(false), 2000)
   }
@@ -79,9 +70,31 @@ export function VaultDashboard({ onViewTransaction, onNavigate }: VaultDashboard
         return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Needs Signatures</Badge>
       case "failed":
         return <Badge variant="destructive">Failed</Badge>
+      case "cancelled":
+        return <Badge variant="destructive">Cancelled</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto p-6">
+        <Card className="border-red-200">
+          <CardContent className="pt-6">
+            <p className="text-red-600">Failed to load wallet data. Please try again.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -116,7 +129,7 @@ export function VaultDashboard({ onViewTransaction, onNavigate }: VaultDashboard
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-mint mb-1">{walletData.balance} SUI</div>
+            <div className="text-3xl font-bold text-mint mb-1">{mockWalletData.balance} SUI</div>
             <p className="text-sm text-muted-foreground">≈ $2,469.12 USD</p>
           </CardContent>
         </Card>
@@ -132,7 +145,7 @@ export function VaultDashboard({ onViewTransaction, onNavigate }: VaultDashboard
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-orchid mb-1">
-              {walletData.threshold.required} of {walletData.threshold.total}
+              {threshold} of {totalOwners}
             </div>
             <p className="text-sm text-muted-foreground">Signatures required to move funds</p>
           </CardContent>
@@ -150,7 +163,7 @@ export function VaultDashboard({ onViewTransaction, onNavigate }: VaultDashboard
           <CardContent>
             <div className="flex items-center gap-2">
               <code className="text-sm bg-muted px-3 py-2 rounded-lg flex-1 truncate font-mono">
-                {walletData.address.slice(0, 20)}...
+                {walletAddress.slice(0, 20)}...
               </code>
               <Button variant="ghost" size="sm" onClick={copyAddress}>
                 <Copy className="h-4 w-4" />
@@ -176,39 +189,50 @@ export function VaultDashboard({ onViewTransaction, onNavigate }: VaultDashboard
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {walletData.recentTransactions.map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                onClick={() => onViewTransaction(tx.id)}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-muted rounded-lg">{getStatusIcon(tx.status)}</div>
-                  <div>
-                    <div className="font-semibold">
-                      {tx.amount !== "0" ? `${tx.amount} SUI to ${tx.recipient}` : `${tx.type} with ${tx.recipient}`}
+            {recentProposals.length > 0 ? (
+              recentProposals.map((proposal) => {
+                const totalWeight = proposal.signatures.reduce((sum, sig) => sum + (sig.owner?.weight || 0), 0)
+                const progress = (totalWeight / threshold) * 100
+                
+                return (
+                  <div
+                    key={proposal.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => onViewTransaction(proposal.id)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 bg-muted rounded-lg">{getStatusIcon(proposal.status)}</div>
+                      <div>
+                        <div className="font-semibold">{proposal.title}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {formatDistanceToNow(new Date(proposal.created_at), { addSuffix: true })}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">{tx.timestamp}</div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-sm text-muted-foreground">
+                          {totalWeight}/{threshold} weight collected
+                        </div>
+                        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden mt-1">
+                          <div
+                            className="h-full bg-gradient-to-r from-orchid to-mint transition-all duration-300 rounded-full"
+                            style={{
+                              width: `${Math.min(progress, 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                      {getStatusBadge(proposal.status)}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground">
-                      {tx.signatures}/{tx.required} signatures collected
-                    </div>
-                    <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden mt-1">
-                      <div
-                        className="h-full bg-gradient-to-r from-orchid to-mint transition-all duration-300 rounded-full"
-                        style={{
-                          width: `${(tx.signatures / tx.required) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {getStatusBadge(tx.status)}
-                </div>
+                )
+              })
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No transactions yet. Create your first proposal!</p>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>

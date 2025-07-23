@@ -11,12 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { createProposal } from "@/lib/supabase/proposals"
+import { toast } from "sonner"
+import { useCurrentAccount } from "@mysten/dapp-kit"
 
 interface TransactionProposalProps {
+  walletId?: string
   onComplete: () => void
 }
 
-export function TransactionProposal({ onComplete }: TransactionProposalProps) {
+export function TransactionProposal({ walletId, onComplete }: TransactionProposalProps) {
+  const currentAccount = useCurrentAccount()
   const [transactionType, setTransactionType] = useState("send")
   const [recipient, setRecipient] = useState("")
   const [amount, setAmount] = useState("")
@@ -67,12 +72,60 @@ export function TransactionProposal({ onComplete }: TransactionProposalProps) {
   ]
 }`
 
-  const createProposal = async () => {
+  const handleCreateProposal = async () => {
+    if (!walletId) {
+      // If no wallet ID, just simulate for demo
+      setIsCreating(true)
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+      setIsCreating(false)
+      onComplete()
+      return
+    }
+
+    if (!currentAccount) {
+      toast.error("Please connect your wallet first")
+      return
+    }
+
     setIsCreating(true)
-    // Simulate proposal creation
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setIsCreating(false)
-    onComplete()
+    
+    try {
+      // Generate title based on transaction type
+      let title = ""
+      let description = ""
+      
+      if (transactionType === "send") {
+        title = `Send ${amount} SUI`
+        description = `Transfer ${amount} SUI to ${recipient}`
+      } else if (transactionType === "contract") {
+        title = `Contract Call: ${functionName}`
+        description = `Call ${functionName} on contract ${contractAddress}`
+      } else {
+        title = "Custom Transaction"
+        description = "Custom transaction data"
+      }
+      
+      // For now, use the mock transaction data as tx_bytes
+      // In a real app, you would build the actual transaction here
+      const txBytes = Buffer.from(rawTransactionData).toString('base64')
+      
+      await createProposal({
+        wallet_id: walletId,
+        title,
+        description,
+        tx_bytes: txBytes,
+        created_by: currentAccount.address,
+        status: 'pending'
+      })
+      
+      toast.success("Transaction proposal created!")
+      onComplete()
+    } catch (error) {
+      console.error('Error creating proposal:', error)
+      toast.error("Failed to create proposal")
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   const isValidProposal = () => {
@@ -280,7 +333,7 @@ export function TransactionProposal({ onComplete }: TransactionProposalProps) {
               </Tabs>
 
               <div className="mt-6 space-y-4">
-                <Button onClick={createProposal} disabled={!isValidProposal() || isCreating} className="w-full">
+                <Button onClick={handleCreateProposal} disabled={!isValidProposal() || isCreating} className="w-full">
                   {isCreating ? (
                     "Creating Proposal..."
                   ) : (

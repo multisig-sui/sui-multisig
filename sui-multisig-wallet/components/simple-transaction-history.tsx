@@ -1,56 +1,35 @@
 "use client"
 
 import { useState } from "react"
-import { Search, CheckCircle, Clock, XCircle, ExternalLink } from "lucide-react"
+import { Search, CheckCircle, Clock, XCircle, ExternalLink, Loader2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useRealtimeWallet } from "@/hooks/use-realtime-wallet"
+import { formatDistanceToNow } from "date-fns"
 
 interface SimpleTransactionHistoryProps {
+  walletId?: string
   onViewTransaction: (id: string) => void
 }
 
-const mockTransactions = [
-  {
-    id: "tx_001",
-    hash: "0x1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890",
-    type: "Send SUI",
-    status: "executed",
-    amount: "150.5",
-    timestamp: new Date("2024-01-15T10:30:00Z"),
-    signatures: { collected: 2, required: 2 },
-  },
-  {
-    id: "tx_002",
-    hash: "0x2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890ab",
-    type: "Contract Call",
-    status: "pending",
-    amount: "0",
-    timestamp: new Date("2024-01-15T09:15:00Z"),
-    signatures: { collected: 1, required: 2 },
-  },
-  {
-    id: "tx_003",
-    hash: "0x3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890abcd",
-    type: "Send SUI",
-    status: "failed",
-    amount: "75.25",
-    timestamp: new Date("2024-01-14T16:45:00Z"),
-    signatures: { collected: 2, required: 2 },
-  },
-]
-
-export function SimpleTransactionHistory({ onViewTransaction }: SimpleTransactionHistoryProps) {
+export function SimpleTransactionHistory({ walletId, onViewTransaction }: SimpleTransactionHistoryProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  
+  // Use real data if walletId is provided
+  const { proposals, wallet, isLoading } = walletId 
+    ? useRealtimeWallet(walletId)
+    : { proposals: [], wallet: null, isLoading: false }
 
-  const filteredTransactions = mockTransactions.filter((tx) => {
+  const filteredProposals = proposals.filter((proposal) => {
     const matchesSearch =
-      tx.hash.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.type.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || tx.status === statusFilter
+      proposal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      proposal.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      proposal.id.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = statusFilter === "all" || proposal.status === statusFilter
     return matchesSearch && matchesStatus
   })
 
@@ -61,6 +40,7 @@ export function SimpleTransactionHistory({ onViewTransaction }: SimpleTransactio
       case "pending":
         return <Clock className="h-4 w-4 text-yellow-600" />
       case "failed":
+      case "cancelled":
         return <XCircle className="h-4 w-4 text-red-600" />
       default:
         return null
@@ -72,6 +52,8 @@ export function SimpleTransactionHistory({ onViewTransaction }: SimpleTransactio
       executed: "default",
       pending: "secondary",
       failed: "destructive",
+      cancelled: "destructive",
+      executing: "secondary",
     } as const
 
     return (
@@ -113,6 +95,7 @@ export function SimpleTransactionHistory({ onViewTransaction }: SimpleTransactio
                 <SelectItem value="executed">Executed</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -122,56 +105,73 @@ export function SimpleTransactionHistory({ onViewTransaction }: SimpleTransactio
       {/* Transaction List */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Transactions ({filteredTransactions.length})</CardTitle>
+          <CardTitle className="text-lg">Transactions ({filteredProposals.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {filteredTransactions.map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                onClick={() => onViewTransaction(tx.id)}
-              >
-                <div className="flex items-center gap-4">
-                  {getStatusIcon(tx.status)}
-                  <div>
-                    <div className="font-medium">{tx.type}</div>
-                    <div className="text-sm text-muted-foreground font-mono">
-                      {tx.hash.slice(0, 10)}...{tx.hash.slice(-6)}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredProposals.map((proposal) => {
+                const totalWeight = proposal.signatures.reduce((sum, sig) => sum + (sig.owner?.weight || 0), 0)
+                const threshold = wallet?.threshold || 2
+                
+                return (
+                  <div
+                    key={proposal.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => onViewTransaction(proposal.id)}
+                  >
+                    <div className="flex items-center gap-4">
+                      {getStatusIcon(proposal.status)}
+                      <div>
+                        <div className="font-medium">{proposal.title}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {formatDistanceToNow(new Date(proposal.created_at), { addSuffix: true })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        {proposal.description && (
+                          <div className="text-sm text-muted-foreground max-w-[200px] truncate">
+                            {proposal.description}
+                          </div>
+                        )}
+                        <div className="text-sm text-muted-foreground">
+                          {totalWeight}/{threshold} weight collected
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(proposal.status)}
+                        {proposal.executed_digest && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              window.open(`https://suiexplorer.com/txblock/${proposal.executed_digest}`, "_blank")
+                            }}
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )
+              })}
 
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    {tx.amount !== "0" && <div className="font-medium">{tx.amount} SUI</div>}
-                    <div className="text-sm text-muted-foreground">
-                      {tx.signatures.collected}/{tx.signatures.required} signatures
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(tx.status)}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        window.open(`https://suiexplorer.com/txblock/${tx.hash}`, "_blank")
-                      }}
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                    </Button>
-                  </div>
+              {filteredProposals.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No transactions found</p>
                 </div>
-              </div>
-            ))}
-
-            {filteredTransactions.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No transactions found</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
