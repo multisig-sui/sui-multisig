@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name('sui-multisig')
   .description('CLI tool for managing Sui multisig operations')
-  .version('1.3.2');
+  .version('1.3.3');
 
 // Helper function to get the config directory and ensure required subdirectories exist
 function getConfigDir(): string {
