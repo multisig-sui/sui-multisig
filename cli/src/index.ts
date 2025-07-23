@@ -128,7 +128,7 @@ program
 program
   .command('approve')
   .description('Approve or reject a transaction')
-  .option('-t, --transaction <number>', 'Transaction id')
+  .option('-tx, --transaction <dir>', 'Transaction directory')
   .option('-ms, --multisig <address>', 'Multisig wallet address')
   .action((options: ApproveOptions) => {
     const args = options.transaction ? [`--transaction ${options.transaction}`] : [];
@@ -138,7 +138,7 @@ program
 program
   .command('execute')
   .description('Execute an approved transaction')
-  .option('-t, --transaction <number>', 'Transaction id')
+  .option('-tx, --transaction <dir>', 'Transaction directory')
   .option('-ms, --multisig <address>', 'Multisig wallet address')
   .action((options: ExecuteOptions) => {
     const args = options.transaction ? [`--transaction ${options.transaction}`] : [];

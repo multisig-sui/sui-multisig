@@ -4,15 +4,21 @@
 SCRIPT_DIR="$SUI_MULTISIG_SCRIPTS_DIR"
 source "$SCRIPT_DIR/util/transaction_helpers.sh"
 
-# Parse -ms/--multisig argument
+# Initialize variables
 MULTISIG_ADDR=""
+TX_DIR=""
 ORIGINAL_ARGS=("$@")
 
+# Parse arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -ms|--multisig)
             MULTISIG_ADDR="$2"
             export MULTISIG_ADDR
+            shift 2
+            ;;
+        -tx|--transaction)
+            TX_DIR="$2"
             shift 2
             ;;
         *)
@@ -55,35 +61,48 @@ if [ -n "$MULTISIG_ADDR" ]; then
     TX_DIRS=("${FILTERED_TX_DIRS[@]}")
 fi
 
-if [ ${#TX_DIRS[@]} -eq 0 ] || [ ! -d "${TX_DIRS[0]}" ]; then
-    echo "Error: No transactions found in ~/.sui-multisig/transactions"
-    exit 1
-fi
-
-# Display available transactions
-echo -e "\n📋 Available transactions:"
-echo "------------------------"
-for i in "${!TX_DIRS[@]}"; do
-    echo "[$i] $(basename "${TX_DIRS[$i]}")"
-done
-echo "------------------------"
-
-# Prompt user to select a transaction
-while true; do
-    read -p "Select transaction number: " selection
-    if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -lt "${#TX_DIRS[@]}" ]; then
-        TX_DIR="${TX_DIRS[$selection]}"
-        break
+# If TX_DIR is provided, resolve to full path if needed
+if [ -n "$TX_DIR" ]; then
+    if [ -d "$TX_DIR" ]; then
+        :
+    elif [ -d "$SUI_MULTISIG_TRANSACTIONS_DIR/$TX_DIR" ]; then
+        TX_DIR="$SUI_MULTISIG_TRANSACTIONS_DIR/$TX_DIR"
     else
-        echo "❌ Invalid selection. Please enter a number between 0 and $((${#TX_DIRS[@]}-1))"
+        echo "Error: Transaction directory not found: $TX_DIR"
+        exit 1
     fi
-done
-
-# Get the transaction bytes
-TX_BYTES_FILE="$TX_DIR/tx_bytes"
-if [ ! -f "$TX_BYTES_FILE" ]; then
-    echo "Error: Transaction bytes file not found: $TX_BYTES_FILE"
-    exit 1
+    TX_BYTES_FILE="$TX_DIR/tx_bytes"
+    if [ ! -f "$TX_BYTES_FILE" ]; then
+        echo "Error: Transaction bytes file not found: $TX_BYTES_FILE"
+        exit 1
+    fi
+else
+    if [ ${#TX_DIRS[@]} -eq 0 ] || [ ! -d "${TX_DIRS[0]}" ]; then
+        echo "Error: No transactions found in ~/.sui-multisig/transactions"
+        exit 1
+    fi
+    # Display available transactions
+    echo -e "\n📋 Available transactions:"
+    echo "------------------------"
+    for i in "${!TX_DIRS[@]}"; do
+        echo "[$i] $(basename "${TX_DIRS[$i]}")"
+    done
+    echo "------------------------"
+    # Prompt user to select a transaction
+    while true; do
+        read -p "Select transaction number: " selection
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -lt "${#TX_DIRS[@]}" ]; then
+            TX_DIR="${TX_DIRS[$selection]}"
+            break
+        else
+            echo "❌ Invalid selection. Please enter a number between 0 and $((${#TX_DIRS[@]}-1))"
+        fi
+    done
+    TX_BYTES_FILE="$TX_DIR/tx_bytes"
+    if [ ! -f "$TX_BYTES_FILE" ]; then
+        echo "Error: Transaction bytes file not found: $TX_BYTES_FILE"
+        exit 1
+    fi
 fi
 
 TX_BYTES=$(cat "$TX_BYTES_FILE")

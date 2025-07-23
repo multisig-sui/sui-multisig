@@ -51,7 +51,7 @@ TRANSACTION_TYPE=""
 BATCH_FILE=""
 MULTISIG_ADDR=""
 
-# Simple argument parsing
+# Parse arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -t|--type)
