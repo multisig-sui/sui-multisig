@@ -133,6 +133,7 @@ program
   .option('-tx, --transaction <dir>', 'Transaction directory')
   .option('-ms, --multisig <address>', 'Multisig wallet address')
   .option('-s, --signer <address>', 'Signer address to use for approval')
+  .option('-y, --assume-yes', 'Automatically answer yes to prompts')
   .action((options: ApproveOptions) => {
     const args = Object.entries(options)
       .filter(([_, value]) => value !== undefined)
@@ -145,6 +146,7 @@ program
   .description('Execute an approved transaction')
   .option('-tx, --transaction <dir>', 'Transaction directory')
   .option('-ms, --multisig <address>', 'Multisig wallet address')
+  .option('-y, --assume-yes', 'Automatically answer yes to prompts')
   .action((options: ExecuteOptions) => {
     const args = Object.entries(options)
       .filter(([_, value]) => value !== undefined)

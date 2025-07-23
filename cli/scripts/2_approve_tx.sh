@@ -22,9 +22,11 @@ MULTISIG_ADDR=""
 TX_DIR=""
 SIGNER_ADDRESS=""
 ORIGINAL_ARGS=("$@")
+ASSUME_YES=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
+    echo "Processing argument: $1"
     case "$1" in
         -ms|--multisig)
             MULTISIG_ADDR="$2"
@@ -38,6 +40,10 @@ while [[ $# -gt 0 ]]; do
         -s|--signer)
             SIGNER_ADDRESS="$2"
             shift 2
+            ;;
+        -y|--assumeYes)
+            ASSUME_YES=1
+            shift
             ;;
         *)
             shift
@@ -124,13 +130,6 @@ if ! decode_and_display_tx "$TX_BYTES"; then
     exit 1
 fi
 
-# Confirm transaction
-read -p "Do you want to approve this transaction? (y/N): " APPROVE
-if [[ ! "$APPROVE" =~ ^[Yy]$ ]]; then
-    echo "Transaction approval cancelled."
-    exit 0
-fi
-
 # Get addresses from Sui client
 ADDRESSES_JSON=$(sui client addresses --json)
 ACTIVE_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r '.activeAddress')
@@ -182,11 +181,19 @@ fi
 # Check if signature already exists
 if [ -f "$SIGS_DIR/${SIGNER_ADDRESS#0x}" ]; then
     echo "⚠️  This address has already signed this transaction"
-    read -p "Do you want to overwrite the existing signature? (y/N): " OVERWRITE
-    if [[ ! "$OVERWRITE" =~ ^[Yy]$ ]]; then
-        echo "Aborted."
-        exit 0
-    fi
+    exit 0
+fi
+
+# Confirm transaction
+if [ "$ASSUME_YES" -eq 1 ]; then
+    APPROVE="y"
+    echo "Approving transaction"
+else
+    read -p "Do you want to approve this transaction? (y/N): " APPROVE
+fi
+if [[ ! "$APPROVE" =~ ^[Yy]$ ]]; then
+    echo "Transaction approval cancelled."
+    exit 0
 fi
 
 # Sign the transaction

@@ -8,6 +8,7 @@ source "$SCRIPT_DIR/util/transaction_helpers.sh"
 MULTISIG_ADDR=""
 TX_DIR=""
 ORIGINAL_ARGS=("$@")
+ASSUME_YES=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -20,6 +21,10 @@ while [[ $# -gt 0 ]]; do
         -tx|--transaction)
             TX_DIR="$2"
             shift 2
+            ;;
+        -y|--assume-yes)
+            ASSUME_YES=1
+            shift
             ;;
         *)
             shift
@@ -181,6 +186,18 @@ echo "• Weight: $SIGNED_WEIGHT/$TOTAL_WEIGHT (threshold: $THRESHOLD)"
 if [ "$SIGNED_WEIGHT" -lt "$THRESHOLD" ]; then
     echo "❌ Not enough signatures (weight $SIGNED_WEIGHT < threshold $THRESHOLD)"
     exit 1
+fi
+
+# Confirm transaction
+if [ "$ASSUME_YES" -eq 1 ]; then
+    EXECUTE="y"
+    echo "Executing transaction"
+else
+    read -p "Do you want to execute this transaction? (y/N): " EXECUTE
+fi
+if [[ ! "$EXECUTE" =~ ^[Yy]$ ]]; then
+    echo "Transaction execution cancelled."
+    exit 0
 fi
 
 # Combine signatures
