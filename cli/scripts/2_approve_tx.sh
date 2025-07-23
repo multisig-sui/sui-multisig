@@ -20,6 +20,7 @@ fi
 # Initialize variables
 MULTISIG_ADDR=""
 TX_DIR=""
+SIGNER_ADDRESS=""
 ORIGINAL_ARGS=("$@")
 
 # Parse arguments
@@ -32,6 +33,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -tx|--transaction)
             TX_DIR="$2"
+            shift 2
+            ;;
+        -s|--signer)
+            SIGNER_ADDRESS="$2"
             shift 2
             ;;
         *)
@@ -134,41 +139,45 @@ ACTIVE_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r '.activeAddress')
 SIGS_DIR="$TX_DIR/signatures"
 mkdir -p "$SIGS_DIR"
 
-# Show available addresses with signature status
-echo -e "\n📋 Available addresses:"
-echo "------------------------"
-while IFS= read -r line; do
-    NAME=$(echo "$line" | cut -d'|' -f1)
-    ADDR=$(echo "$line" | cut -d'|' -f2)
-    STATUS=""
-    if [ -f "$SIGS_DIR/${ADDR#0x}" ]; then
-        STATUS=" (✓ already signed)"
-    fi
-    if [ "$ADDR" = "$ACTIVE_ADDRESS" ]; then
-        echo "* $NAME: $ADDR$STATUS (active)"
-    else
-        echo "  $NAME: $ADDR$STATUS"
-    fi
-done < <(echo "$ADDRESSES_JSON" | jq -r '.addresses[] | "\(.[0])|\(.[1])"')
-echo "------------------------"
+# Show available addresses and prompt for address selection only if SIGNER_ADDRESS is not set
+if [ -z "$SIGNER_ADDRESS" ]; then
+    echo -e "\n📋 Available addresses:"
+    echo "------------------------"
+    while IFS= read -r line; do
+        NAME=$(echo "$line" | cut -d'|' -f1)
+        ADDR=$(echo "$line" | cut -d'|' -f2)
+        STATUS=""
+        if [ -f "$SIGS_DIR/${ADDR#0x}" ]; then
+            STATUS=" (✓ already signed)"
+        fi
+        if [ "$ADDR" = "$ACTIVE_ADDRESS" ]; then
+            echo "* $NAME: $ADDR$STATUS (active)"
+        else
+            echo "  $NAME: $ADDR$STATUS"
+        fi
+    done < <(echo "$ADDRESSES_JSON" | jq -r '.addresses[] | "\(.[0])|\(.[1])"')
+    echo "------------------------"
 
-# Prompt for address selection with retry loop
-while true; do
-    read -p "Enter address name to use (or press enter for active address): " ADDR_NAME
+    # Prompt for address selection with retry loop
+    while true; do
+        read -p "Enter address name to use (or press enter for active address): " ADDR_NAME
 
-    if [ -z "$ADDR_NAME" ]; then
-        SIGNER_ADDRESS="$ACTIVE_ADDRESS"
+        if [ -z "$ADDR_NAME" ]; then
+            SIGNER_ADDRESS="$ACTIVE_ADDRESS"
+            break
+        fi
+
+        # Find address by name
+        SIGNER_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r --arg name "$ADDR_NAME" '.addresses[] | select(.[0] == $name) | .[1]')
+        if [ -z "$SIGNER_ADDRESS" ] || [ "$SIGNER_ADDRESS" = "null" ]; then
+            echo "❌ Error: Address name not found. Please enter the exact address name (e.g. 'upbeat-alexandrite')"
+            continue
+        fi
         break
-    fi
-
-    # Find address by name
-    SIGNER_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r --arg name "$ADDR_NAME" '.addresses[] | select(.[0] == $name) | .[1]')
-    if [ -z "$SIGNER_ADDRESS" ] || [ "$SIGNER_ADDRESS" = "null" ]; then
-        echo "❌ Error: Address name not found. Please enter the exact address name (e.g. 'upbeat-alexandrite')"
-        continue
-    fi
-    break
-done
+    done
+else
+    echo "Using provided signer address: $SIGNER_ADDRESS"
+fi
 
 # Check if signature already exists
 if [ -f "$SIGS_DIR/${SIGNER_ADDRESS#0x}" ]; then

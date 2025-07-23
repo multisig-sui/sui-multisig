@@ -104,63 +104,6 @@ return_to_original_dir() {
     return 0
 }
 
-# Function to select an address
-# Returns: "<name>|<address>" or empty if cancelled
-select_address() {
-    local prompt_msg="${1:-Enter address name (or press enter for active address): }"
-
-    # Get addresses from Sui client
-    local ADDRESSES_JSON
-    ADDRESSES_JSON=$(sui client addresses --json)
-    if [ $? -ne 0 ]; then
-        echo "❌ Failed to get addresses" >&2
-        return 1
-    fi
-
-    local ACTIVE_ADDRESS
-    ACTIVE_ADDRESS=$(echo "$ADDRESSES_JSON" | jq -r '.activeAddress')
-
-    # Show available addresses
-    echo -e "\n📋 Available addresses:"
-    echo "------------------------"
-    while IFS= read -r line; do
-        NAME=$(echo "$line" | cut -d'|' -f1)
-        ADDR=$(echo "$line" | cut -d'|' -f2)
-        if [ "$ADDR" = "$ACTIVE_ADDRESS" ]; then
-            echo "* $NAME: $ADDR (active)"
-        else
-            echo "  $NAME: $ADDR"
-        fi
-    done < <(echo "$ADDRESSES_JSON" | jq -r '.addresses[] | "\(.[0])|\(.[1])"')
-    echo "------------------------"
-
-    # Prompt for address selection
-    local ADDR_NAME
-    read -p "$prompt_msg" ADDR_NAME
-
-    # Get name of active address if no input
-    if [ -z "$ADDR_NAME" ]; then
-        local ACTIVE_NAME
-        ACTIVE_NAME=$(echo "$ADDRESSES_JSON" | jq -r --arg addr "$ACTIVE_ADDRESS" '.addresses[] | select(.[1] == $addr) | .[0]')
-        if [ -n "$ACTIVE_NAME" ]; then
-            echo "${ACTIVE_NAME}|${ACTIVE_ADDRESS}"
-            return 0
-        fi
-        echo "❌ Could not find active address name" >&2
-        return 1
-    fi
-
-    # Find address by name
-    local SELECTED_INFO
-    SELECTED_INFO=$(echo "$ADDRESSES_JSON" | jq -r --arg name "$ADDR_NAME" '.addresses[] | select(.[0] == $name) | "\(.[0])|\(.[1])"')
-    if [ -z "$SELECTED_INFO" ] || [ "$SELECTED_INFO" = "|" ]; then
-        echo "❌ Address name not found" >&2
-        return 1
-    fi
-
-    echo "$SELECTED_INFO"
-    return 0
-}
 
 # Function to decode and display transaction details
 decode_and_display_tx() {

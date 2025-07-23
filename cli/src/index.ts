@@ -93,6 +93,8 @@ interface CreateOptions {
 
 interface ApproveOptions {
   transaction?: string;
+  multisig?: string;
+  signer?: string;
 }
 
 interface ExecuteOptions {
@@ -130,8 +132,11 @@ program
   .description('Approve or reject a transaction')
   .option('-tx, --transaction <dir>', 'Transaction directory')
   .option('-ms, --multisig <address>', 'Multisig wallet address')
+  .option('-s, --signer <address>', 'Signer address to use for approval')
   .action((options: ApproveOptions) => {
-    const args = options.transaction ? [`--transaction ${options.transaction}`] : [];
+    const args = Object.entries(options)
+      .filter(([_, value]) => value !== undefined)
+      .map(([key, value]) => `--${key} ${value}`);
     runScript('2_approve_tx.sh', args);
   });
 
@@ -141,7 +146,9 @@ program
   .option('-tx, --transaction <dir>', 'Transaction directory')
   .option('-ms, --multisig <address>', 'Multisig wallet address')
   .action((options: ExecuteOptions) => {
-    const args = options.transaction ? [`--transaction ${options.transaction}`] : [];
+    const args = Object.entries(options)
+      .filter(([_, value]) => value !== undefined)
+      .map(([key, value]) => `--${key} ${value}`);
     runScript('3_execute_tx.sh', args);
   });
 
