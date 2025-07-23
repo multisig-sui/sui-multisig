@@ -34,16 +34,22 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# If no multisig address specified, prompt for selection
+if [ -z "$MULTISIG_ADDR" ]; then
+    select_multisig_wallet
+fi
+
 # List all transaction directories
 TX_DIRS=("$SUI_MULTISIG_TRANSACTIONS_DIR"/tx_*)
 
-# If MULTISIG_ADDR is set, filter TX_DIRS to only those matching the address
+# If MULTISIG_ADDR is set, filter TX_DIRS to only those where the sender matches
 if [ -n "$MULTISIG_ADDR" ]; then
     FILTERED_TX_DIRS=()
     for tx_dir in "${TX_DIRS[@]}"; do
-        if [ -f "$tx_dir/multisig_addr" ]; then
-            addr=$(cat "$tx_dir/multisig_addr")
-            if [ "$addr" = "$MULTISIG_ADDR" ]; then
+        TX_BYTES_FILE="$tx_dir/tx_bytes"
+        if [ -f "$TX_BYTES_FILE" ]; then
+            SENDER=$(sui keytool decode-or-verify-tx --tx-bytes "$(cat "$TX_BYTES_FILE")" --json 2>/dev/null | jq -r '.tx.V1.sender // empty')
+            if [ "$SENDER" = "$MULTISIG_ADDR" ]; then
                 FILTERED_TX_DIRS+=("$tx_dir")
             fi
         fi

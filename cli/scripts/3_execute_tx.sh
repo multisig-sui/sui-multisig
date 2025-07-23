@@ -39,6 +39,22 @@ fi
 
 # List all transaction directories
 TX_DIRS=("$SUI_MULTISIG_TRANSACTIONS_DIR"/tx_*)
+
+# Filter TX_DIRS to only those where the sender matches MULTISIG_ADDR
+if [ -n "$MULTISIG_ADDR" ]; then
+    FILTERED_TX_DIRS=()
+    for tx_dir in "${TX_DIRS[@]}"; do
+        TX_BYTES_FILE="$tx_dir/tx_bytes"
+        if [ -f "$TX_BYTES_FILE" ]; then
+            SENDER=$(sui keytool decode-or-verify-tx --tx-bytes "$(cat "$TX_BYTES_FILE")" --json 2>/dev/null | jq -r '.tx.V1.sender // empty')
+            if [ "$SENDER" = "$MULTISIG_ADDR" ]; then
+                FILTERED_TX_DIRS+=("$tx_dir")
+            fi
+        fi
+    done
+    TX_DIRS=("${FILTERED_TX_DIRS[@]}")
+fi
+
 if [ ${#TX_DIRS[@]} -eq 0 ] || [ ! -d "${TX_DIRS[0]}" ]; then
     echo "Error: No transactions found in ~/.sui-multisig/transactions"
     exit 1
