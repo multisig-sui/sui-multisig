@@ -102,11 +102,9 @@ To create an optimized production build of the frontend:
 
 ## Prerequisites
 
-- [Sui CLI](https://docs.sui.io/references/cli/client) (REQUIRED: install [this custom fork](https://github.com/arjanjohan/sui/tree/override-sender))
+- [Sui CLI](https://docs.sui.io/references/cli/client) (version 1.50 or higher)
 - Bash shell environment
 - jq (for JSON processing)
-
-__NOTE: To use this tool you must use the [custom fork](https://github.com/arjanjohan/sui/tree/override-sender) of the Sui CLI. This custom fork allows to create a transaction with a custom signer (i.e. the multisig wallet). We created a PR (https://github.com/MystenLabs/sui/pull/22158) to add this new feature to the next version of the Sui CLI.__
 
 > **Note:** If you prefer using the original bash scripts directly (as shown in the [demo video](https://youtu.be/GX_vhvUv8ks)), see the [Bash Scripts documentation](docs/bash-scripts.md).
 
