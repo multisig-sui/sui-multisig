@@ -101,7 +101,10 @@ export function SignatureCollection({ transactionId, onNavigate }: SignatureColl
         {step === "collect" && (
           <div className="space-y-8">
             <CollaborativeSignatureFlow
-              signers={transaction.signatures}
+              signers={transaction.signatures.map(sig => ({
+                ...sig,
+                name: sig.signer
+              }))}
               requiredSignatures={transaction.threshold.required}
             />
 

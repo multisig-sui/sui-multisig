@@ -14,25 +14,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { toB64 } from "@mysten/sui/utils"
+import { useWalletPublicKey } from '@/hooks/use-wallet-public-key'
 
 const SUI_COIN_TYPE = '0x2::sui::SUI';
 const MIST_PER_SUI = 1_000_000_000;
 
-// Helper to get the flag byte for a given public key signature scheme
-function getFlagForKeyScheme(scheme: 'ED25519' | 'Secp256k1' | 'Secp256r1' | string): number {
-  switch (scheme) {
-    case 'ED25519': return 0x00;
-    case 'Secp256k1': return 0x01;
-    case 'Secp256r1': return 0x02;
-    default: throw new Error(`Unknown key scheme: ${scheme}`);
-  }
-}
-
 export function ConnectWallet() {
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
-  const [formattedPublicKey, setFormattedPublicKey] = useState<string | null>(null);
+  const { formattedPublicKey } = useWalletPublicKey();
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
   const [walletBalance, setWalletBalance] = useState<CoinBalance | null>(null);
   const [isLoadingWalletBalance, setIsLoadingWalletBalance] = useState<boolean>(false);
@@ -74,55 +64,6 @@ export function ConnectWallet() {
     }
   }, [currentAccount?.address, fetchWalletBalance]);
 
-  useEffect(() => {
-    if (currentAccount && currentAccount.publicKey) {
-      try {
-        let schemeString: string | undefined = undefined;
-        const rawPublicKeyBytes = currentAccount.publicKey;
-
-        // Attempt to infer from public key length
-        if (rawPublicKeyBytes.length === 32) {
-          schemeString = 'ED25519';
-        } else if (rawPublicKeyBytes.length === 33) {
-          schemeString = 'SECP256K1'; 
-        }
-
-        // Fallback: check chains array
-        if (!schemeString && currentAccount.chains) {
-          for (const chain of currentAccount.chains) {
-            if (chain.startsWith('sui:')) {
-              const potentialScheme = chain.substring(4).toUpperCase();
-              if (potentialScheme === 'ED25519' || potentialScheme === 'SECP256K1' || potentialScheme === 'SECP256R1') {
-                schemeString = potentialScheme;
-                break;
-              }
-            }
-          }
-        }
-
-        if (!schemeString) {
-          throw new Error(`Could not determine key scheme.`);
-        }
-        
-        let keySchemeForFlag: 'ED25519' | 'Secp256k1' | 'Secp256r1';
-        if (schemeString === 'ED25519') keySchemeForFlag = 'ED25519';
-        else if (schemeString === 'SECP256K1') keySchemeForFlag = 'Secp256k1';
-        else if (schemeString === 'SECP256R1') keySchemeForFlag = 'Secp256r1';
-        else throw new Error(`Unsupported key scheme string: ${schemeString}`);
-
-        const flag = getFlagForKeyScheme(keySchemeForFlag);
-        const pkWithFlag = new Uint8Array(1 + rawPublicKeyBytes.length);
-        pkWithFlag[0] = flag;
-        pkWithFlag.set(rawPublicKeyBytes, 1);
-        setFormattedPublicKey(toB64(pkWithFlag));
-      } catch (error: any) {
-        console.error("Error formatting public key:", error);
-        setFormattedPublicKey(null);
-      }
-    } else {
-      setFormattedPublicKey(null);
-    }
-  }, [currentAccount]);
 
   const handleCopyPublicKey = () => {
     if (formattedPublicKey) {

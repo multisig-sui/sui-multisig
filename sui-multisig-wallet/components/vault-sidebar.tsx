@@ -5,6 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Wallet, Plus, Send, Users, Settings, Moon, Sun, History, FileText, Activity, Lock } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useRouter } from "next/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -36,6 +37,7 @@ export function VaultSidebar({ activeView, onViewChange }: VaultSidebarProps) {
   const { state } = useSidebar()
   const [pendingCount] = useState(3)
   const [mounted, setMounted] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
@@ -136,7 +138,14 @@ export function VaultSidebar({ activeView, onViewChange }: VaultSidebarProps) {
                     <SidebarMenuItemWithTooltip item={item}>
                       <SidebarMenuButton
                         isActive={activeView === item.id}
-                        onClick={() => onViewChange(item.id)}
+                        onClick={() => {
+                          if (window.location.pathname !== '/' && window.location.pathname !== '/wallet/') {
+                            router.push('/')
+                            setTimeout(() => onViewChange(item.id), 100)
+                          } else {
+                            onViewChange(item.id)
+                          }
+                        }}
                         className={cn(
                           "w-full justify-start transition-all duration-200 hover:bg-muted rounded-xl px-3 py-2.5",
                           isCollapsed && "justify-center px-2",
@@ -185,7 +194,13 @@ export function VaultSidebar({ activeView, onViewChange }: VaultSidebarProps) {
                     <SidebarMenuItemWithTooltip item={item}>
                       <SidebarMenuButton
                         isActive={activeView === item.id}
-                        onClick={() => onViewChange(item.id)}
+                        onClick={() => {
+                          if (item.id === 'create' && window.location.pathname !== '/create') {
+                            router.push('/create')
+                          } else {
+                            onViewChange(item.id)
+                          }
+                        }}
                         className={cn(
                           "w-full justify-start transition-all duration-200 hover:bg-muted rounded-xl px-3 py-2.5",
                           isCollapsed && "justify-center px-2",

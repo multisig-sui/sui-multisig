@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Trash2, ArrowRight, ArrowLeft, Check, Download, Info } from "lucide-react"
+import { Plus, Trash2, ArrowRight, ArrowLeft, Check, Download, Info, Key, Copy, ChevronDown, ChevronUp, Loader2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,13 +17,16 @@ import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519'
 import { Secp256k1PublicKey } from '@mysten/sui/keypairs/secp256k1'
 import { Secp256r1PublicKey } from '@mysten/sui/keypairs/secp256r1'
 import { SuiSigner, SuiMultisigConfig, SuiKeyScheme } from '@/lib/types/sui'
-import { b64ToUint8Array } from '@/lib/sui-utils'
+import { b64ToUint8Array, parseSuiPublicKey } from '@/lib/sui-utils'
+import { toast } from 'sonner'
+import { AddSignerModal } from './add-signer-modal'
 
 interface CreateMultisigWalletProps {
   onComplete: (config: SuiMultisigConfig) => void
+  isLoading?: boolean
 }
 
-export function CreateMultisigWallet({ onComplete }: CreateMultisigWalletProps) {
+export function CreateMultisigWallet({ onComplete, isLoading = false }: CreateMultisigWalletProps) {
   const [step, setStep] = useState(1)
   const [threshold, setThreshold] = useState(2)
   const [signers, setSigners] = useState<SuiSigner[]>([
@@ -33,19 +36,28 @@ export function CreateMultisigWallet({ onComplete }: CreateMultisigWalletProps) 
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [generatedConfig, setGeneratedConfig] = useState<SuiMultisigConfig | null>(null)
+  const [isUsingExampleKeys, setIsUsingExampleKeys] = useState(false)
+  const [showAddSignerModal, setShowAddSignerModal] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
+  const [copiedConfig, setCopiedConfig] = useState(false)
 
   const addSigner = () => {
     if (signers.length >= 10) {
       setError("A maximum of 10 signers are allowed for Sui Multisig.")
       return
     }
+    setShowAddSignerModal(true)
+  }
+
+  const handleAddSignerFromModal = (signerData: Partial<SuiSigner>) => {
     const newSigner: SuiSigner = {
       id: Date.now().toString(),
-      publicKey: "",
-      weight: 1,
-      keyScheme: 'ed25519'
+      publicKey: signerData.publicKey || "",
+      weight: signerData.weight || 1,
+      keyScheme: signerData.keyScheme || 'ed25519'
     }
     setSigners([...signers, newSigner])
+    setError(null)
   }
 
   const removeSigner = (id: string) => {
@@ -68,6 +80,36 @@ export function CreateMultisigWallet({ onComplete }: CreateMultisigWalletProps) 
 
   const calculateTotalWeight = () => {
     return signers.reduce((total, signer) => total + (signer.weight || 0), 0)
+  }
+
+  const useExampleConfiguration = () => {
+    // Set up example configuration with 3 signers
+    const exampleSigners: SuiSigner[] = [
+      {
+        id: "example-1",
+        publicKey: "AHFomETPbntb3tWjHH/e/eEG65k4r2g+PQ8viNXF8+gg",
+        weight: 1,
+        keyScheme: 'ed25519'
+      },
+      {
+        id: "example-2", 
+        publicKey: "AQLqobE3hupXBd6SFeHMGL6M1tE+Fd33mPuBgJaBFNd5Cg==",
+        weight: 1,
+        keyScheme: 'secp256k1'
+      },
+      {
+        id: "example-3",
+        publicKey: "AgLDQW8n6YcXtP3BdXOSnqQOdCCYvp7Jh/NidWCiY+vhpA==",
+        weight: 1,
+        keyScheme: 'secp256r1'
+      }
+    ]
+    
+    setSigners(exampleSigners)
+    setThreshold(2) // 2-of-3 multisig
+    setError(null)
+    setIsUsingExampleKeys(true)
+    toast.info('Example configuration loaded. These are test keys only!')
   }
 
   const validateConfiguration = () => {
@@ -117,54 +159,8 @@ export function CreateMultisigWallet({ onComplete }: CreateMultisigWalletProps) 
 
       for (const signer of signers) {
         try {
-          const decodedBytes = b64ToUint8Array(signer.publicKey)
-          if (decodedBytes.length === 0) {
-            throw new Error('Public key is empty or invalid base64.')
-          }
-
-          const flag = decodedBytes[0]
-          const rawKeyBytes = decodedBytes.subarray(1)
-          
-          let suiPublicKey: PublicKey
-          let actualScheme: SuiKeyScheme
-
-          const ED25519_PUBLIC_KEY_LENGTH = 32
-          const SECP256K1_COMPRESSED_PUBLIC_KEY_LENGTH = 33
-          const SECP256R1_COMPRESSED_PUBLIC_KEY_LENGTH = 33
-
-          switch (flag) {
-            case 0x00: // Ed25519
-              if (rawKeyBytes.length !== ED25519_PUBLIC_KEY_LENGTH) {
-                throw new Error(`Invalid Ed25519 public key length. Expected ${ED25519_PUBLIC_KEY_LENGTH}, got ${rawKeyBytes.length}`)
-              }
-              suiPublicKey = new Ed25519PublicKey(rawKeyBytes)
-              actualScheme = 'ed25519'
-              break
-            case 0x01: // Secp256k1
-              if (rawKeyBytes.length !== SECP256K1_COMPRESSED_PUBLIC_KEY_LENGTH) {
-                throw new Error(`Invalid Secp256k1 public key length. Expected ${SECP256K1_COMPRESSED_PUBLIC_KEY_LENGTH}, got ${rawKeyBytes.length}`)
-              }
-              suiPublicKey = new Secp256k1PublicKey(rawKeyBytes)
-              actualScheme = 'secp256k1'
-              break
-            case 0x02: // Secp256r1
-              if (rawKeyBytes.length !== SECP256R1_COMPRESSED_PUBLIC_KEY_LENGTH) {
-                throw new Error(`Invalid Secp256r1 public key length. Expected ${SECP256R1_COMPRESSED_PUBLIC_KEY_LENGTH}, got ${rawKeyBytes.length}`)
-              }
-              suiPublicKey = new Secp256r1PublicKey(rawKeyBytes)
-              actualScheme = 'secp256r1'
-              break
-            default:
-              throw new Error(`Unknown or unsupported public key flag: 0x${flag.toString(16)}`)
-          }
-
-          if (actualScheme !== signer.keyScheme) {
-            throw new Error(
-              `The selected key scheme '${signer.keyScheme}' for public key '${signer.publicKey.substring(0,10)}...' ` +
-              `does not match the actual key scheme '${actualScheme}' derived from the public key's flag byte (0x${flag.toString(16)}). ` +
-              `Please ensure the public key string and the selected scheme are consistent.`
-            )
-          }
+          // Use the parseSuiPublicKey utility which properly handles the flag byte
+          const suiPublicKey = parseSuiPublicKey(signer.publicKey, signer.keyScheme)
           
           parsedSuiPublicKeys.push({ publicKey: suiPublicKey, weight: signer.weight })
         } catch (e: any) {
@@ -215,6 +211,19 @@ export function CreateMultisigWallet({ onComplete }: CreateMultisigWalletProps) 
     onComplete(generatedConfig)
   }
 
+  const handleCopyConfig = () => {
+    if (!generatedConfig) return
+    
+    const jsonString = JSON.stringify(generatedConfig, null, 2)
+    navigator.clipboard.writeText(jsonString)
+    setCopiedConfig(true)
+    toast.success('Configuration copied to clipboard!')
+    
+    setTimeout(() => {
+      setCopiedConfig(false)
+    }, 2000)
+  }
+
   const isValidConfig = signers.every((s) => s.publicKey) && threshold <= calculateTotalWeight()
 
   const progress = (step / 3) * 100
@@ -238,12 +247,34 @@ export function CreateMultisigWallet({ onComplete }: CreateMultisigWalletProps) 
       {step === 1 && (
         <Card className="max-w-3xl mx-auto">
           <CardHeader>
-            <CardTitle>Configure Signers</CardTitle>
-            <CardDescription>
-              Add the public keys of all signers and set their weights. Maximum 10 signers allowed.
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Configure Signers</CardTitle>
+                <CardDescription>
+                  Add the public keys of all signers and set their weights. Maximum 10 signers allowed.
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={useExampleConfiguration}
+                className="gap-2"
+              >
+                <Key className="h-4 w-4" />
+                Use Example Configuration
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
+            {isUsingExampleKeys && (
+              <Alert className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
+                <Info className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                  <strong>Test Mode:</strong> You're using example keys for testing. These are not real wallets and cannot sign transactions.
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <div>
               <Label htmlFor="threshold">Signature Threshold</Label>
               <div className="flex items-center gap-4 mt-2">
@@ -282,40 +313,86 @@ export function CreateMultisigWallet({ onComplete }: CreateMultisigWalletProps) 
               </div>
 
               {signers.map((signer, index) => (
-                <Card key={signer.id}>
+                <Card key={signer.id} className={signer.publicKey ? "border-green-200 dark:border-green-800" : ""}>
                   <CardContent className="p-4">
-                    <div className="space-y-4">
+                    {signer.publicKey ? (
+                      // Simplified view when key is already added
                       <div className="flex items-center justify-between">
-                        <span className="font-medium">Signer {index + 1}</span>
-                        {signers.length > 2 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeSigner(signer.id)}
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">{signer.keyScheme.toUpperCase()}</Badge>
+                              <span className="text-sm font-medium">Weight: {signer.weight}</span>
+                            </div>
+                            <div className="text-sm text-muted-foreground font-mono mt-1">
+                              {signer.publicKey.slice(0, 20)}...
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Select 
+                            value={signer.weight.toString()} 
+                            onValueChange={(value) => updateSigner(signer.id, "weight", parseInt(value))}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+                            <SelectTrigger className="w-20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[1, 2, 3, 4, 5].map((w) => (
+                                <SelectItem key={w} value={w.toString()}>
+                                  {w}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {signers.length > 2 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeSigner(signer.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="md:col-span-2">
-                          <Label htmlFor={`pk-${signer.id}`}>Public Key (Base64 with flag)</Label>
-                          <Textarea
-                            id={`pk-${signer.id}`}
-                            placeholder="Enter base64 public key..."
-                            value={signer.publicKey}
-                            onChange={(e) => updateSigner(signer.id, "publicKey", e.target.value)}
-                            className="font-mono text-sm min-h-[60px]"
-                          />
+                    ) : (
+                      // Full form view when no key is added yet
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">Signer {index + 1}</span>
+                          {signers.length > 2 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeSigner(signer.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                         
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor={`scheme-${signer.id}`}>Key Scheme</Label>
-                            <Select 
-                              value={signer.keyScheme} 
-                              onValueChange={(value: SuiKeyScheme) => updateSigner(signer.id, "keyScheme", value)}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="md:col-span-2">
+                            <Label htmlFor={`pk-${signer.id}`}>Public Key (Base64 with flag)</Label>
+                            <Textarea
+                              id={`pk-${signer.id}`}
+                              placeholder="Enter base64 public key..."
+                              value={signer.publicKey}
+                              onChange={(e) => updateSigner(signer.id, "publicKey", e.target.value)}
+                              className="font-mono text-sm min-h-[60px]"
+                            />
+                          </div>
+                          
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor={`scheme-${signer.id}`}>Key Scheme</Label>
+                              <Select 
+                                value={signer.keyScheme} 
+                                onValueChange={(value: SuiKeyScheme) => updateSigner(signer.id, "keyScheme", value)}
                             >
                               <SelectTrigger id={`scheme-${signer.id}`}>
                                 <SelectValue />
@@ -342,6 +419,7 @@ export function CreateMultisigWallet({ onComplete }: CreateMultisigWalletProps) 
                         </div>
                       </div>
                     </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -449,18 +527,71 @@ export function CreateMultisigWallet({ onComplete }: CreateMultisigWalletProps) 
               </AlertDescription>
             </Alert>
 
+            {/* Configuration Display */}
+            <div className="mb-6">
+              <Button
+                variant="ghost"
+                onClick={() => setShowConfig(!showConfig)}
+                className="w-full justify-between text-sm"
+              >
+                <span>View Configuration</span>
+                {showConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+              
+              {showConfig && (
+                <div className="mt-4 relative">
+                  <div className="absolute right-2 top-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCopyConfig}
+                      className="h-8 px-2"
+                    >
+                      {copiedConfig ? (
+                        <>
+                          <Check className="h-4 w-4 mr-1" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-1" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs text-left">
+                    <code>{JSON.stringify(generatedConfig, null, 2)}</code>
+                  </pre>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-3">
-              <Button onClick={handleSaveConfig} variant="outline" className="flex-1">
+              <Button onClick={handleSaveConfig} variant="outline" className="flex-1" disabled={isLoading}>
                 <Download className="h-4 w-4 mr-2" />
                 Download Config
               </Button>
-              <Button onClick={() => onComplete(generatedConfig)} className="flex-1">
-                Go to Dashboard
+              <Button onClick={() => onComplete(generatedConfig)} className="flex-1" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating Wallet...
+                  </>
+                ) : (
+                  'Go to Dashboard'
+                )}
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
+
+      <AddSignerModal
+        open={showAddSignerModal}
+        onOpenChange={setShowAddSignerModal}
+        onAddSigner={handleAddSignerFromModal}
+      />
     </div>
   )
 }
