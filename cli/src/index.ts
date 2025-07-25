@@ -113,7 +113,8 @@ program
   .option('-t, --type <type>', 'Transaction type (publish|upgrade|call|transfer)')
   .option('-b, --batch <file>', 'Create multiple transactions from JSON file')
   .option('-ms, --multisig <address>', 'Multisig wallet address')
-  .option('-d, --directory <dir>', 'Package directory for publish')
+  .option('-d, --directory <dir>', 'Package directory for publish/upgrade')
+  .option('-c, --capability <address>', 'UpgradeCap address for upgrade')
   .option('-p, --package <address>', 'Package address for call')
   .option('-m, --module <name>', 'Module name for call')
   .option('-f, --function <name>', 'Function name for call')
@@ -145,6 +146,8 @@ program
   .command('execute')
   .description('Execute an approved transaction')
   .option('-tx, --transaction <dir>', 'Transaction directory')
+  .option('-a, --all', 'Execute all transactions')
+  .option('-e, --show-errors', 'Show errors (when using --all)')
   .option('-ms, --multisig <address>', 'Multisig wallet address')
   .option('-y, --assume-yes', 'Automatically answer yes to prompts')
   .action((options: ExecuteOptions) => {

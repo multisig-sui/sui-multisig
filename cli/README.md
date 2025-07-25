@@ -51,6 +51,7 @@ sui-multisig create [options]
 - `-b, --batch <file>`: Create multiple transactions from a JSON batch file
 - `-ms, --multisig <address>`: Multisig wallet address to use as sender
 - `-d, --directory <dir>`: Package directory for publish/upgrade
+- `-c, --capability <address>`: Address of the UpgradeCap Object for upgrade
 - `-p, --package <address>`: Package address for call
 - `-m, --module <name>`: Module name for call
 - `-f, --function <name>`: Function name for call
