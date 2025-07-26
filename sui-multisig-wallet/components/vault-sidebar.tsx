@@ -115,7 +115,10 @@ export function VaultSidebar({ activeView, onViewChange }: VaultSidebarProps) {
     <TooltipProvider delayDuration={0}>
       <Sidebar collapsible="icon" className="border-r border-border">
         <SidebarHeader className="p-6 border-b border-border">
-          <div className="flex items-center justify-center">
+          <div 
+            className="flex items-center justify-center cursor-pointer"
+            onClick={() => router.push('/')}
+          >
             <VaultLogo size={isCollapsed ? "sm" : "md"} showText={!isCollapsed} />
           </div>
         </SidebarHeader>
@@ -139,11 +142,11 @@ export function VaultSidebar({ activeView, onViewChange }: VaultSidebarProps) {
                       <SidebarMenuButton
                         isActive={activeView === item.id}
                         onClick={() => {
-                          if (window.location.pathname !== '/' && window.location.pathname !== '/wallet/') {
+                          if (window.location.pathname === '/' || window.location.pathname.startsWith('/wallet/')) {
+                            onViewChange(item.id)
+                          } else {
                             router.push('/')
                             setTimeout(() => onViewChange(item.id), 100)
-                          } else {
-                            onViewChange(item.id)
                           }
                         }}
                         className={cn(

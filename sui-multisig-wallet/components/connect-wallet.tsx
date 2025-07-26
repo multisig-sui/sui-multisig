@@ -4,7 +4,7 @@ import { ConnectButton, useCurrentAccount, useSuiClient } from "@mysten/dapp-kit
 import { Button } from "@/components/ui/button"
 import { useEffect, useState, useCallback } from "react"
 import { CoinBalance } from "@mysten/sui/client"
-import { Copy, Check, RefreshCw, Wallet } from "lucide-react"
+import { Copy, Check, RefreshCw, Wallet, Users } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,9 +12,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { useWalletPublicKey } from '@/hooks/use-wallet-public-key'
+import { createClient } from '@/lib/supabase/client'
+import { Wallet as MultisigWallet } from '@/lib/supabase/types'
+import { useRouter } from 'next/navigation'
 
 const SUI_COIN_TYPE = '0x2::sui::SUI';
 const MIST_PER_SUI = 1_000_000_000;
@@ -26,6 +32,9 @@ export function ConnectWallet() {
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
   const [walletBalance, setWalletBalance] = useState<CoinBalance | null>(null);
   const [isLoadingWalletBalance, setIsLoadingWalletBalance] = useState<boolean>(false);
+  const [multisigWallets, setMultisigWallets] = useState<MultisigWallet[]>([]);
+  const [isLoadingMultisigs, setIsLoadingMultisigs] = useState<boolean>(false);
+  const router = useRouter();
 
   const formatBalance = (totalBalance: string) => {
     const balanceInMist = BigInt(totalBalance);
@@ -55,14 +64,56 @@ export function ConnectWallet() {
     }
   }, [suiClient, currentAccount?.address]);
 
+  const fetchMultisigWallets = useCallback(async () => {
+    setIsLoadingMultisigs(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('wallets')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setMultisigWallets(data || []);
+    } catch (error) {
+      console.error("Error fetching multisig wallets:", error);
+      setMultisigWallets([]);
+    } finally {
+      setIsLoadingMultisigs(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (currentAccount?.address) {
       fetchWalletBalance();
+      fetchMultisigWallets();
     } else {
       setWalletBalance(null);
       setIsLoadingWalletBalance(false);
+      setMultisigWallets([]);
     }
-  }, [currentAccount?.address, fetchWalletBalance]);
+  }, [currentAccount?.address, fetchWalletBalance, fetchMultisigWallets]);
+
+  // Subscribe to realtime updates for wallets
+  useEffect(() => {
+    if (!currentAccount?.address) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel('wallet-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'wallets' },
+        () => {
+          fetchMultisigWallets();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentAccount?.address, fetchMultisigWallets]);
 
 
   const handleCopyPublicKey = () => {
@@ -159,6 +210,47 @@ export function ConnectWallet() {
           )}
 
           <DropdownMenuSeparator />
+
+          {/* Multisig Wallets */}
+          {multisigWallets.length > 0 && (
+            <>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="gap-2">
+                  <Users className="h-4 w-4" />
+                  <span>Multisig Wallets</span>
+                  <Badge variant="secondary" className="ml-auto">
+                    {multisigWallets.length}
+                  </Badge>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-64">
+                  {isLoadingMultisigs ? (
+                    <DropdownMenuItem disabled>
+                      <span className="text-muted-foreground">Loading...</span>
+                    </DropdownMenuItem>
+                  ) : (
+                    multisigWallets.map((wallet) => (
+                      <DropdownMenuItem
+                        key={wallet.id}
+                        onClick={() => router.push(`/wallet/${wallet.id}`)}
+                        className="flex-col items-start gap-1 cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-medium">{wallet.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {wallet.threshold} sigs
+                          </Badge>
+                        </div>
+                        <code className="text-xs text-muted-foreground">
+                          {wallet.address.slice(0, 10)}...{wallet.address.slice(-8)}
+                        </code>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+            </>
+          )}
           
           {/* Disconnect using ConnectButton */}
           <div className="p-2">
