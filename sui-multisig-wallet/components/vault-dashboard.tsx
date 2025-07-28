@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useWalletData } from "@/hooks/use-wallet-data"
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow, isWithinInterval } from "date-fns"
 import { useSuiClient } from "@mysten/dapp-kit"
 import { MIST_PER_SUI } from "@mysten/sui/utils"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
+import type { DateRange } from "react-day-picker"
 
 interface VaultDashboardProps {
   walletId?: string
@@ -21,6 +23,7 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
   const [balance, setBalance] = useState<string>("0")
   const [isLoadingBalance, setIsLoadingBalance] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const suiClient = useSuiClient()
   
   // Use real data if walletId is provided
@@ -45,8 +48,25 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
   const threshold = wallet?.threshold || (isUsingMockData ? mockWalletData.threshold : 0)
   const totalOwners = wallet?.owners?.length || (isUsingMockData ? mockWalletData.owners.length : 0)
 
-  // Get recent proposals (max 3)
-  const recentProposals = proposals.slice(0, 3)
+  // Filter proposals by date range if specified, then get recent ones (max 3)
+  const filteredProposals = dateRange?.from || dateRange?.to 
+    ? proposals.filter((proposal: any) => {
+        let matchesDateRange = true
+        if (dateRange?.from && dateRange?.to) {
+          const proposalDate = new Date(proposal.created_at)
+          matchesDateRange = isWithinInterval(proposalDate, {
+            start: dateRange.from,
+            end: dateRange.to
+          })
+        } else if (dateRange?.from) {
+          const proposalDate = new Date(proposal.created_at)
+          matchesDateRange = proposalDate >= dateRange.from
+        }
+        return matchesDateRange
+      })
+    : proposals
+
+  const recentProposals = filteredProposals.slice(0, 3)
 
   // Fetch real balance from Sui blockchain
   useEffect(() => {
@@ -275,14 +295,46 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
       {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Here's what's been happening with your shared wallet</CardDescription>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>
+                  Recent Activity
+                  {dateRange && (
+                    <span className="text-sm font-normal text-muted-foreground ml-2">
+                      (filtered by date)
+                    </span>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  {dateRange 
+                    ? `Showing ${filteredProposals.length} filtered transactions` 
+                    : "Here's what's been happening with your shared wallet"
+                  }
+                </CardDescription>
+              </div>
+              <Button variant="outline" onClick={() => onNavigate("history")}>
+                View All Activity
+              </Button>
             </div>
-            <Button variant="outline" onClick={() => onNavigate("history")}>
-              View All Activity
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 items-start">
+              <DateRangePicker
+                className="w-full sm:w-80"
+                value={dateRange}
+                onChange={setDateRange}
+                placeholder="Filter activity by date"
+              />
+              {dateRange && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDateRange(undefined)}
+                  className="w-full sm:w-auto"
+                >
+                  Clear Filter
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>

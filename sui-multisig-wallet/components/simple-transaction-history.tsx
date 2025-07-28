@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useWalletData } from "@/hooks/use-wallet-data"
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow, isWithinInterval } from "date-fns"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
+import type { DateRange } from "react-day-picker"
 
 interface SimpleTransactionHistoryProps {
   walletId?: string
@@ -18,6 +20,7 @@ interface SimpleTransactionHistoryProps {
 export function SimpleTransactionHistory({ walletId, onViewTransaction }: SimpleTransactionHistoryProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
   
   // Use real data if walletId is provided
   const walletData = walletId ? useWalletData(walletId) : null
@@ -29,7 +32,21 @@ export function SimpleTransactionHistory({ walletId, onViewTransaction }: Simple
       proposal.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       proposal.id.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === "all" || proposal.status === statusFilter
-    return matchesSearch && matchesStatus
+    
+    // Date range filtering
+    let matchesDateRange = true
+    if (dateRange?.from && dateRange?.to) {
+      const proposalDate = new Date(proposal.created_at)
+      matchesDateRange = isWithinInterval(proposalDate, {
+        start: dateRange.from,
+        end: dateRange.to
+      })
+    } else if (dateRange?.from) {
+      const proposalDate = new Date(proposal.created_at)
+      matchesDateRange = proposalDate >= dateRange.from
+    }
+    
+    return matchesSearch && matchesStatus && matchesDateRange
   })
 
   const getStatusIcon = (status: string) => {
@@ -75,28 +92,51 @@ export function SimpleTransactionHistory({ walletId, onViewTransaction }: Simple
           <CardTitle className="text-lg">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search transactions..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search transactions..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="executed">Executed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="executed">Executed</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <DateRangePicker
+                className="w-full sm:w-80"
+                value={dateRange}
+                onChange={setDateRange}
+                placeholder="Filter by date range"
+              />
+              {(searchTerm || statusFilter !== "all" || dateRange) && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm("")
+                    setStatusFilter("all")
+                    setDateRange(undefined)
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  Clear All Filters
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
