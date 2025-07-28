@@ -2,13 +2,13 @@
 
 import { cn } from "@/lib/utils"
 
-interface VaultLogoProps {
+interface SuiMultisigLogoProps {
   size?: "sm" | "md" | "lg"
   className?: string
   showText?: boolean
 }
 
-export function VaultLogo({ size = "md", className, showText = true }: VaultLogoProps) {
+export function SuiMultisigLogo({ size = "md", className, showText = true }: SuiMultisigLogoProps) {
   const sizeClasses = {
     sm: "h-8 w-8",
     md: "h-12 w-12",
@@ -58,10 +58,13 @@ export function VaultLogo({ size = "md", className, showText = true }: VaultLogo
 
       {showText && (
         <div className="flex flex-col">
-          <span className={cn("font-bold text-orchid", textSizeClasses[size])}>VaultLink</span>
-          {size !== "sm" && <span className="text-xs text-muted-foreground">Move together. Sign with confidence.</span>}
+          <span className={cn("font-bold text-orchid", textSizeClasses[size])}>SuiMultisig</span>
+          {size !== "sm" && <span className="text-xs text-muted-foreground">Professional multisig management</span>}
         </div>
       )}
     </div>
   )
 }
+
+// Backward compatibility alias
+export const VaultLogo = SuiMultisigLogo

@@ -31,11 +31,16 @@ export function useRealtimeWallet(walletId: string): UseRealtimeWalletReturn {
   const supabase = createClient()
 
   const fetchWalletData = useCallback(async () => {
+    // Skip Supabase for local wallets - useWalletData handles this
+    if (walletId.startsWith('wallet_')) {
+      setIsLoading(false)
+      return
+    }
+
     try {
       setIsLoading(true)
       setError(null)
 
-      // Fetch wallet with owners
       const { data: walletData, error: walletError } = await supabase
         .from('wallets')
         .select(`
@@ -49,7 +54,6 @@ export function useRealtimeWallet(walletId: string): UseRealtimeWalletReturn {
 
       setWallet(walletData as WalletWithOwners)
 
-      // Fetch proposals with signatures
       const { data: proposalsData, error: proposalsError } = await supabase
         .from('proposals')
         .select(`
@@ -66,9 +70,11 @@ export function useRealtimeWallet(walletId: string): UseRealtimeWalletReturn {
 
       setProposals(proposalsData as ProposalWithSignatures[])
     } catch (err) {
-      console.error('Error fetching wallet data:', err)
       setError(err as Error)
-      toast.error('Failed to load wallet data')
+      // Only show error for non-local wallets
+      if (!walletId.startsWith('wallet_')) {
+        toast.error('Failed to load cloud wallet data')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -77,6 +83,11 @@ export function useRealtimeWallet(walletId: string): UseRealtimeWalletReturn {
   // Set up realtime subscriptions
   useEffect(() => {
     fetchWalletData()
+
+    // Only set up subscriptions for cloud wallets
+    if (walletId.startsWith('wallet_')) {
+      return
+    }
 
     // Subscribe to proposals channel
     const proposalsChannel = supabase

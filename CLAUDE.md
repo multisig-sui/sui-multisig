@@ -36,7 +36,7 @@ npm run build  # Compile to JavaScript
 - **Framework**: Next.js 15.2.4 with App Router
 - **Language**: TypeScript with strict mode
 - **UI**: Radix UI primitives + shadcn/ui components
-- **Styling**: Tailwind CSS with VaultLink brand colors (orchid, mint, dark-slate)
+- **Styling**: Tailwind CSS with SuiMultisig brand colors (orchid, mint, dark-slate)
 - **Blockchain**: @mysten/dapp-kit for wallet integration, @mysten/sui SDK
 - **Backend**: Supabase for real-time features and storage
 - **State**: React Query for server state management
@@ -72,7 +72,7 @@ npm run build  # Compile to JavaScript
 
 2. **Custom Sui CLI**: Users need a custom fork of the Sui CLI for proper multisig support (see main README).
 
-3. **Brand Colors**: Use VaultLink colors (orchid, mint, dark-slate) defined in Tailwind config for consistency.
+3. **Brand Colors**: Use SuiMultisig colors (orchid, mint, dark-slate) defined in Tailwind config for consistency.
 
 4. **Component Patterns**: Follow existing patterns using Radix UI primitives wrapped with custom styling via shadcn/ui approach.
 

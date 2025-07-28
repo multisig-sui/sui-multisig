@@ -94,7 +94,7 @@ export default function CreatePage() {
             <SidebarTrigger className="-ml-1" />
             <div className="h-4 w-px bg-border mx-2" />
             <VaultLogo size="sm" showText={false} />
-            <span className="vault-subheading brand-orchid">VaultLink</span>
+            <span className="vault-subheading brand-orchid">SuiMultisig Console</span>
             <div className="ml-auto">
               <ConnectWallet />
             </div>

@@ -7,8 +7,8 @@ import { Providers } from "@/components/providers"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "VaultLink - Sui MultiSig Wallet",
-  description: "Secure multisig wallet interface for the Sui blockchain",
+  title: "SuiMultisig Console - Sui MultiSig Wallet",
+  description: "Professional multisig wallet management for Sui blockchain",
     generator: 'v0.dev'
 }
 
