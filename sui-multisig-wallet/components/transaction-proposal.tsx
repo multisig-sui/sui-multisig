@@ -13,15 +13,19 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createProposal } from "@/lib/supabase/proposals"
 import { toast } from "sonner"
-import { useCurrentAccount } from "@mysten/dapp-kit"
+import { useCurrentAccount, useSuiClient } from "@mysten/dapp-kit"
+import { Transaction } from "@mysten/sui/transactions"
+import { toB64 } from "@mysten/sui/utils"
 
 interface TransactionProposalProps {
   walletId?: string
+  multisigAddress?: string
   onComplete: () => void
 }
 
-export function TransactionProposal({ walletId, onComplete }: TransactionProposalProps) {
+export function TransactionProposal({ walletId, multisigAddress, onComplete }: TransactionProposalProps) {
   const currentAccount = useCurrentAccount()
+  const suiClient = useSuiClient()
   const [transactionType, setTransactionType] = useState("send")
   const [recipient, setRecipient] = useState("")
   const [amount, setAmount] = useState("")
@@ -30,51 +34,11 @@ export function TransactionProposal({ walletId, onComplete }: TransactionProposa
   const [txArguments, setTxArguments] = useState("")
   const [showRawData, setShowRawData] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
-
-  // Mock raw transaction data
-  const rawTransactionData = `{
-  "kind": "ProgrammableTransaction",
-  "inputs": [
-    {
-      "type": "pure",
-      "valueType": "address",
-      "value": "${recipient}"
-    },
-    {
-      "type": "pure", 
-      "valueType": "u64",
-      "value": "${amount}000000000"
-    }
-  ],
-  "transactions": [
-    {
-      "SplitCoins": [
-        "GasCoin",
-        [
-          {
-            "Input": 1
-          }
-        ]
-      ]
-    },
-    {
-      "TransferObjects": [
-        [
-          {
-            "Result": 0
-          }
-        ],
-        {
-          "Input": 0
-        }
-      ]
-    }
-  ]
-}`
+  const [rawTransactionData, setRawTransactionData] = useState<string>("")
 
   const handleCreateProposal = async () => {
-    if (!walletId) {
-      // If no wallet ID, just simulate for demo
+    if (!walletId || !multisigAddress) {
+      // If no wallet ID or multisig address, just simulate for demo
       setIsCreating(true)
       await new Promise((resolve) => setTimeout(resolve, 2000))
       setIsCreating(false)
@@ -93,27 +57,68 @@ export function TransactionProposal({ walletId, onComplete }: TransactionProposa
       // Generate title based on transaction type
       let title = ""
       let description = ""
+      let txBytesBase64 = ""
       
       if (transactionType === "send") {
+        // Validate inputs
+        if (!recipient || !amount) {
+          toast.error("Recipient and amount are required")
+          setIsCreating(false)
+          return
+        }
+
+        const parsedAmount = parseFloat(amount)
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+          toast.error("Invalid amount")
+          setIsCreating(false)
+          return
+        }
+
+        // Build the transaction
+        const tx = new Transaction()
+        tx.setSender(multisigAddress)
+        tx.setGasBudget(10000000) // 0.01 SUI
+        
+        // Convert SUI to MIST (1 SUI = 1e9 MIST)
+        const amountMist = BigInt(Math.floor(parsedAmount * 1_000_000_000))
+        
+        // Split coins and transfer
+        const [coin] = tx.splitCoins(tx.gas, [amountMist])
+        tx.transferObjects([coin], recipient)
+        
+        // Build transaction bytes
+        const txBytes = await tx.build({ client: suiClient })
+        txBytesBase64 = toB64(txBytes)
+        
+        // Set raw data for preview
+        setRawTransactionData(JSON.stringify({
+          sender: multisigAddress,
+          recipient: recipient,
+          amount: amount + " SUI",
+          gasBudget: "0.01 SUI"
+        }, null, 2))
+        
         title = `Send ${amount} SUI`
         description = `Transfer ${amount} SUI to ${recipient}`
+        
       } else if (transactionType === "contract") {
-        title = `Contract Call: ${functionName}`
-        description = `Call ${functionName} on contract ${contractAddress}`
+        // TODO: Implement contract call transaction building
+        toast.error("Contract calls not yet implemented")
+        setIsCreating(false)
+        return
       } else {
-        title = "Custom Transaction"
-        description = "Custom transaction data"
+        // TODO: Implement custom transaction support
+        toast.error("Custom transactions not yet implemented")
+        setIsCreating(false)
+        return
       }
       
-      // For now, use the mock transaction data as tx_bytes
-      // In a real app, you would build the actual transaction here
-      const txBytes = Buffer.from(rawTransactionData).toString('base64')
-      
+      // Use Supabase
       await createProposal({
         wallet_id: walletId,
         title,
         description,
-        tx_bytes: txBytes,
+        tx_bytes: txBytesBase64,
         created_by: currentAccount.address,
         status: 'pending'
       })

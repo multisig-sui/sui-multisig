@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Copy, ExternalLink, Plus, Clock, CheckCircle, XCircle, Users, Coins, Shield, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { useRealtimeWallet } from "@/hooks/use-realtime-wallet"
+import { useWalletData } from "@/hooks/use-wallet-data"
 import { formatDistanceToNow } from "date-fns"
+import { useSuiClient } from "@mysten/dapp-kit"
+import { formatBalance } from "@mysten/sui/utils"
 
 interface VaultDashboardProps {
   walletId?: string
@@ -16,11 +18,13 @@ interface VaultDashboardProps {
 
 export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: VaultDashboardProps) {
   const [copiedAddress, setCopiedAddress] = useState(false)
+  const [balance, setBalance] = useState<string>("0")
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true)
+  const suiClient = useSuiClient()
   
   // Use real data if walletId is provided, otherwise use mock data
-  const { wallet, proposals, isLoading, error } = walletId 
-    ? useRealtimeWallet(walletId)
-    : { wallet: null, proposals: [], isLoading: false, error: null }
+  const walletData = walletId ? useWalletData(walletId) : null
+  const { wallet, proposals = [], isLoading = false, error = null } = walletData || {}
 
   // Mock data for when no walletId is provided
   const mockWalletData = {
@@ -42,6 +46,39 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
 
   // Get recent proposals (max 3)
   const recentProposals = proposals.slice(0, 3)
+
+  // Fetch real balance from Sui blockchain
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!walletAddress || walletAddress === mockWalletData.address) {
+        setBalance("1,234.56") // Mock balance for demo
+        setIsLoadingBalance(false)
+        return
+      }
+
+      try {
+        setIsLoadingBalance(true)
+        const coins = await suiClient.getBalance({
+          owner: walletAddress,
+          coinType: '0x2::sui::SUI'
+        })
+        
+        // Format balance from MIST to SUI (1 SUI = 1e9 MIST)
+        const balanceInSui = Number(coins.totalBalance) / 1_000_000_000
+        setBalance(balanceInSui.toLocaleString(undefined, { 
+          minimumFractionDigits: 2, 
+          maximumFractionDigits: 4 
+        }))
+      } catch (error) {
+        console.error('Error fetching balance:', error)
+        setBalance("0")
+      } finally {
+        setIsLoadingBalance(false)
+      }
+    }
+
+    fetchBalance()
+  }, [walletAddress, suiClient])
 
   const copyAddress = () => {
     navigator.clipboard.writeText(walletAddress)
@@ -102,8 +139,12 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-bold text-orchid mb-2">Welcome back! 👋</h1>
-          <p className="text-muted-foreground">Let's check on your shared wallet and see what needs your attention.</p>
+          <h1 className="text-4xl font-bold text-orchid mb-2">
+            {wallet?.name || "Welcome back! 👋"}
+          </h1>
+          <p className="text-muted-foreground">
+            {wallet ? "Your multisig wallet dashboard" : "Let's check on your shared wallet and see what needs your attention."}
+          </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <Button className="bg-orchid hover:bg-orchid/90 text-white" onClick={() => onNavigate("propose")}>
@@ -129,8 +170,18 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-mint mb-1">{mockWalletData.balance} SUI</div>
-            <p className="text-sm text-muted-foreground">≈ $2,469.12 USD</p>
+            <div className="text-3xl font-bold text-mint mb-1">
+              {isLoadingBalance ? (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              ) : (
+                `${balance} SUI`
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {!isLoadingBalance && Number(balance.replace(/,/g, '')) > 0 && 
+                `≈ $${(Number(balance.replace(/,/g, '')) * 2).toFixed(2)} USD`
+              }
+            </p>
           </CardContent>
         </Card>
 

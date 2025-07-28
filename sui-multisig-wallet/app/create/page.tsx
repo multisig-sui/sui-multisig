@@ -1,27 +1,40 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CreateMultisigWallet } from '@/components/create-multisig-wallet'
+import { ImportWallet } from '@/components/import-wallet'
 import { AddressConverter } from '@/components/address-converter'
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { VaultSidebar } from "@/components/vault-sidebar"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { VaultLogo } from "@/components/vault-logo"
 import { ConnectWallet } from "@/components/connect-wallet"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter } from 'next/navigation'
 import { SuiMultisigConfig } from '@/lib/types/sui'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { saveWallet } from '@/lib/local-storage'
 
 export default function CreatePage() {
   const router = useRouter()
   const [isCreatingInDb, setIsCreatingInDb] = useState(false)
   const [activeView, setActiveView] = useState("create")
+  const [activeTab, setActiveTab] = useState("create")
+  
+  useEffect(() => {
+    // Check if we should open the import tab
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') === 'import') {
+      setActiveTab('import')
+    }
+  }, [])
 
   const handleComplete = async (config: SuiMultisigConfig) => {
     setIsCreatingInDb(true)
     
     try {
+      // Use Supabase
       const supabase = createClient()
       
       // Create wallet in database
@@ -38,13 +51,13 @@ export default function CreatePage() {
       if (walletError) throw walletError
       
       // Create owners
-      const owners = config.signers.map(signer => ({
+      const owners = config.signers.map((signer, index) => ({
         wallet_id: wallet.id,
-        name: `Signer ${signer.publicKey.slice(0, 8)}`,
-        type: signer.keyScheme,
+        name: `Signer ${index + 1}`,
+        type: signer.keyScheme === 'secp256k1' || signer.keyScheme === 'secp256r1' ? 'ed25519' : signer.keyScheme,
         public_key: signer.publicKey,
         weight: signer.weight,
-        metadata: {}
+        metadata: { originalKeyScheme: signer.keyScheme }
       }))
       
       const { error: ownersError } = await supabase
@@ -59,10 +72,17 @@ export default function CreatePage() {
       router.push(`/wallet/${wallet.id}`)
     } catch (error) {
       console.error('Error creating wallet:', error)
-      toast.error('Failed to create wallet in database')
+      toast.error('Failed to create wallet')
     } finally {
       setIsCreatingInDb(false)
     }
+  }
+
+  const handleImport = (config: SuiMultisigConfig) => {
+    // For imported wallets, save to local storage and navigate
+    const wallet = saveWallet(config, 'Imported Wallet')
+    toast.success('Wallet imported successfully!')
+    router.push(`/wallet/${wallet.id}`)
   }
 
   return (
@@ -83,10 +103,24 @@ export default function CreatePage() {
             <div className="container mx-auto py-8">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
-                  <CreateMultisigWallet 
-                    onComplete={handleComplete}
-                    isLoading={isCreatingInDb}
-                  />
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="create">Create New</TabsTrigger>
+                      <TabsTrigger value="import">Import Existing</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="create" className="mt-6">
+                      <CreateMultisigWallet 
+                        onComplete={handleComplete}
+                        isLoading={isCreatingInDb}
+                      />
+                    </TabsContent>
+                    <TabsContent value="import" className="mt-6">
+                      <ImportWallet 
+                        onImport={handleImport}
+                        isLoading={false}
+                      />
+                    </TabsContent>
+                  </Tabs>
                 </div>
                 
                 <div className="lg:col-span-1">

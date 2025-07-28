@@ -10,8 +10,12 @@ import { useRealtimeProposal } from "@/hooks/use-realtime-proposal"
 import { useRealtimeWallet } from "@/hooks/use-realtime-wallet"
 import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
-import { submitSignature } from "@/lib/supabase/proposals"
-import { useCurrentAccount } from "@mysten/dapp-kit"
+import { submitSignature, updateProposalStatus } from "@/lib/supabase/proposals"
+import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dapp-kit"
+import { Transaction } from "@mysten/sui/transactions"
+import { fromB64 } from "@mysten/sui/utils"
+import { MultiSigPublicKey } from "@mysten/sui/multisig"
+import { parseSuiPublicKey } from "@/lib/sui-utils"
 
 interface SimpleSignatureFlowProps {
   transactionId: string | null
@@ -21,19 +25,35 @@ interface SimpleSignatureFlowProps {
 
 export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: SimpleSignatureFlowProps) {
   const [isSigning, setIsSigning] = useState(false)
+  const [isExecuting, setIsExecuting] = useState(false)
   const currentAccount = useCurrentAccount()
+  const suiClient = useSuiClient()
+  const { mutateAsync: signTransaction } = useSignTransaction()
   
-  const { proposal, isLoading, error } = useRealtimeProposal(transactionId)
-  const { wallet } = walletId ? useRealtimeWallet(walletId) : { wallet: null }
+  const proposalData = useRealtimeProposal(transactionId)
+  const walletData = walletId 
+    ? useRealtimeWallet(walletId)
+    : { wallet: null }
+  
+  const { proposal, isLoading, error } = proposalData
+  const { wallet } = walletData
 
   // Calculate signature progress
-  const totalWeight = proposal?.signatures.reduce((sum, sig) => sum + (sig.owner?.weight || 0), 0) || 0
+  const calculateTotalWeight = () => {
+    if (!proposal?.signatures || !wallet) return 0
+    
+    // For Supabase mode
+    return proposal.signatures.reduce((sum, sig) => sum + (sig.owner?.weight || 0), 0)
+  }
+  
+  const totalWeight = calculateTotalWeight()
   const threshold = wallet?.threshold || 2
   const progress = (totalWeight / threshold) * 100
   const canExecute = totalWeight >= threshold
   
   // Check if current user has already signed
-  const currentUserOwner = wallet?.owners.find(o => o.public_key === currentAccount?.address)
+  const currentUserOwner = wallet?.owners?.find(o => o.public_key === currentAccount?.address)
+    
   const hasCurrentUserSigned = proposal?.signatures.some(s => s.owner_id === currentUserOwner?.id)
 
   const handleSign = async () => {
@@ -50,14 +70,21 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
     setIsSigning(true)
     
     try {
-      // In a real app, you would sign the actual transaction bytes here
-      // For demo, we'll create a mock signature
-      const mockSignature = `0x${Array(128).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`
+      // Parse the transaction bytes from base64
+      const txBytes = fromB64(proposal.tx_bytes)
       
+      // Sign the transaction with the connected wallet
+      const { signature } = await signTransaction({
+        transaction: Transaction.from(txBytes),
+        account: currentAccount,
+        chain: currentAccount.chains.find(c => c.startsWith('sui:')) || currentAccount.chains[0]
+      })
+      
+      // Submit the real signature
       await submitSignature({
         proposalId: proposal.id,
         ownerId: currentUserOwner.id,
-        signature: mockSignature
+        signature: signature
       })
       
       toast.success("Successfully signed the transaction!")
@@ -66,6 +93,56 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
       toast.error("Failed to sign transaction")
     } finally {
       setIsSigning(false)
+    }
+  }
+
+  const handleExecute = async () => {
+    if (!proposal || !wallet) {
+      toast.error("Unable to execute. Missing transaction or wallet data.")
+      return
+    }
+
+    setIsExecuting(true)
+
+    try {
+      // Build the MultiSigPublicKey from wallet owners
+      const parsedPublicKeys = wallet.owners.map(owner => ({
+        publicKey: parseSuiPublicKey(owner.public_key, (owner.metadata as any)?.originalKeyScheme || owner.type),
+        weight: owner.weight
+      }))
+
+      const multiSigPublicKey = MultiSigPublicKey.fromPublicKeys({
+        threshold: wallet.threshold,
+        publicKeys: parsedPublicKeys
+      })
+
+      // Collect all signatures
+      const signatures = proposal.signatures.map(sig => sig.signature)
+
+      // Combine signatures
+      const combinedSignature = multiSigPublicKey.combinePartialSignatures(signatures)
+
+      // Execute transaction on-chain
+      const { digest } = await suiClient.executeTransactionBlock({
+        transactionBlock: proposal.tx_bytes,
+        signature: combinedSignature,
+        options: { showEffects: true, showObjectChanges: true }
+      })
+
+      // Update proposal status
+      await updateProposalStatus(proposal.id, 'executed', digest)
+
+      toast.success(`Transaction executed successfully! Digest: ${digest.slice(0, 10)}...`)
+      
+      // Navigate to dashboard after a short delay
+      setTimeout(() => {
+        onNavigate("dashboard")
+      }, 2000)
+    } catch (error) {
+      console.error('Error executing transaction:', error)
+      toast.error("Failed to execute transaction")
+    } finally {
+      setIsExecuting(false)
     }
   }
 
@@ -219,8 +296,13 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
                   </Button>
                 )}
                 {canExecute && (
-                  <Button variant="default" className="flex-1">
-                    Execute Transaction
+                  <Button 
+                    variant="default" 
+                    className="flex-1"
+                    onClick={handleExecute}
+                    disabled={isExecuting}
+                  >
+                    {isExecuting ? "Executing..." : "Execute Transaction"}
                   </Button>
                 )}
               </>

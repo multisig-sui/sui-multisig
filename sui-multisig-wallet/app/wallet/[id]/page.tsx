@@ -13,6 +13,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { VaultLogo } from "@/components/vault-logo"
 import { ConnectWallet } from "@/components/connect-wallet"
 import { useState } from "react"
+import { useWalletData } from "@/hooks/use-wallet-data"
 
 export default function WalletPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -20,6 +21,11 @@ export default function WalletPage({ params }: { params: Promise<{ id: string }>
   
   const [activeView, setActiveView] = useState("dashboard")
   const [selectedTransaction, setSelectedTransaction] = useState<string | null>(null)
+  
+  // Get wallet data including multisig address
+  const walletData = useWalletData(walletId)
+  
+  const wallet = walletData.wallet
 
   const renderActiveView = () => {
     switch (activeView) {
@@ -48,6 +54,7 @@ export default function WalletPage({ params }: { params: Promise<{ id: string }>
         return (
           <TransactionProposal 
             walletId={walletId}
+            multisigAddress={wallet?.address}
             onComplete={() => setActiveView("dashboard")}
           />
         )
