@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Copy, ExternalLink, Plus, Clock, CheckCircle, XCircle, Users, Coins, Shield, Loader2 } from "lucide-react"
+import { Copy, ExternalLink, Plus, Clock, CheckCircle, XCircle, Users, Coins, Shield, Loader2, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useWalletData } from "@/hooks/use-wallet-data"
 import { formatDistanceToNow } from "date-fns"
 import { useSuiClient } from "@mysten/dapp-kit"
-import { formatBalance } from "@mysten/sui/utils"
+import { MIST_PER_SUI } from "@mysten/sui/utils"
 
 interface VaultDashboardProps {
   walletId?: string
@@ -20,13 +20,15 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
   const [copiedAddress, setCopiedAddress] = useState(false)
   const [balance, setBalance] = useState<string>("0")
   const [isLoadingBalance, setIsLoadingBalance] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const suiClient = useSuiClient()
   
-  // Use real data if walletId is provided, otherwise use mock data
+  // Use real data if walletId is provided
   const walletData = walletId ? useWalletData(walletId) : null
   const { wallet, proposals = [], isLoading = false, error = null } = walletData || {}
 
-  // Mock data for when no walletId is provided
+  // Only use mock data when no walletId is provided at all
+  const isUsingMockData = !walletId
   const mockWalletData = {
     address: "0x1234567890abcdef1234567890abcdef12345678",
     balance: "1,234.56",
@@ -38,11 +40,10 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
     ],
   }
 
-  // Use real data if available, otherwise fall back to mock
-  const displayWallet = wallet || mockWalletData
-  const walletAddress = wallet?.address || mockWalletData.address
-  const threshold = wallet?.threshold || mockWalletData.threshold
-  const totalOwners = wallet?.owners?.length || mockWalletData.owners.length
+  // Use real data when wallet exists, only fall back to mock if no walletId
+  const walletAddress = wallet?.address || (isUsingMockData ? mockWalletData.address : '')
+  const threshold = wallet?.threshold || (isUsingMockData ? mockWalletData.threshold : 0)
+  const totalOwners = wallet?.owners?.length || (isUsingMockData ? mockWalletData.owners.length : 0)
 
   // Get recent proposals (max 3)
   const recentProposals = proposals.slice(0, 3)
@@ -50,8 +51,12 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
   // Fetch real balance from Sui blockchain
   useEffect(() => {
     const fetchBalance = async () => {
-      if (!walletAddress || walletAddress === mockWalletData.address) {
-        setBalance("1,234.56") // Mock balance for demo
+      if (!walletAddress || isUsingMockData) {
+        if (isUsingMockData) {
+          setBalance("1,234.56") // Mock balance for demo
+        } else {
+          setBalance("0")
+        }
         setIsLoadingBalance(false)
         return
       }
@@ -63,8 +68,8 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
           coinType: '0x2::sui::SUI'
         })
         
-        // Format balance from MIST to SUI (1 SUI = 1e9 MIST)
-        const balanceInSui = Number(coins.totalBalance) / 1_000_000_000
+        // Format balance from MIST to SUI using SDK constant
+        const balanceInSui = Number(coins.totalBalance) / Number(MIST_PER_SUI)
         setBalance(balanceInSui.toLocaleString(undefined, { 
           minimumFractionDigits: 2, 
           maximumFractionDigits: 4 
@@ -86,6 +91,18 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
     setTimeout(() => setCopiedAddress(false), 2000)
   }
 
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    
+    // Refresh balance
+    setIsLoadingBalance(true)
+    
+    // Force page reload to refresh all data (simple but effective)
+    setTimeout(() => {
+      window.location.reload()
+    }, 500)
+  }
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "executed":
@@ -99,11 +116,31 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
     }
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, proposal?: any) => {
     switch (status) {
       case "executed":
         return <Badge className="bg-mint/10 text-mint border-mint/20">Completed</Badge>
       case "pending":
+        // Check if transaction has enough signatures to execute
+        if (proposal && wallet) {
+          const totalWeight = proposal.signatures.reduce((sum: number, sig: any) => {
+            // For local wallets, find owner by matching signerPublicKey
+            const isLocalWallet = walletId?.startsWith('wallet_')
+            if (isLocalWallet) {
+              const owner = wallet.owners.find((o: any) => o.public_key === sig.signerPublicKey)
+              return sum + (owner?.weight || 0)
+            } else {
+              // For Supabase wallets, owner is included in signature
+              return sum + (sig.owner?.weight || 0)
+            }
+          }, 0)
+          
+          if (totalWeight >= wallet.threshold) {
+            return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Ready to Execute</Badge>
+          } else {
+            return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Needs Signatures</Badge>
+          }
+        }
         return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Needs Signatures</Badge>
       case "failed":
         return <Badge variant="destructive">Failed</Badge>
@@ -147,6 +184,16 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isRefreshing || isLoading}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
           <Button className="bg-orchid hover:bg-orchid/90 text-white" onClick={() => onNavigate("propose")}>
             <Plus className="h-4 w-4 mr-2" />
             New Transaction
@@ -191,7 +238,7 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
               <div className="p-2 bg-orchid/10 rounded-lg">
                 <Shield className="h-5 w-5 text-orchid" />
               </div>
-              <CardTitle>Security Level</CardTitle>
+              <CardTitle>Threshold</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -241,8 +288,8 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
         <CardContent>
           <div className="space-y-4">
             {recentProposals.length > 0 ? (
-              recentProposals.map((proposal) => {
-                const totalWeight = proposal.signatures.reduce((sum, sig) => sum + (sig.owner?.weight || 0), 0)
+              recentProposals.map((proposal: any) => {
+                const totalWeight = proposal.signatures.reduce((sum: number, sig: any) => sum + (sig.owner?.weight || 0), 0)
                 const progress = (totalWeight / threshold) * 100
                 
                 return (
@@ -274,7 +321,7 @@ export function VaultDashboard({ walletId, onViewTransaction, onNavigate }: Vaul
                           />
                         </div>
                       </div>
-                      {getStatusBadge(proposal.status)}
+                      {getStatusBadge(proposal.status, proposal)}
                     </div>
                   </div>
                 )

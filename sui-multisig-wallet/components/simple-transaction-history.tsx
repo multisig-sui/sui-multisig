@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { useRealtimeWallet } from "@/hooks/use-realtime-wallet"
+import { useWalletData } from "@/hooks/use-wallet-data"
 import { formatDistanceToNow } from "date-fns"
 
 interface SimpleTransactionHistoryProps {
@@ -20,9 +20,8 @@ export function SimpleTransactionHistory({ walletId, onViewTransaction }: Simple
   const [statusFilter, setStatusFilter] = useState("all")
   
   // Use real data if walletId is provided
-  const { proposals, wallet, isLoading } = walletId 
-    ? useRealtimeWallet(walletId)
-    : { proposals: [], wallet: null, isLoading: false }
+  const walletData = walletId ? useWalletData(walletId) : null
+  const { proposals = [], wallet = null, isLoading = false } = walletData || {}
 
   const filteredProposals = proposals.filter((proposal) => {
     const matchesSearch =

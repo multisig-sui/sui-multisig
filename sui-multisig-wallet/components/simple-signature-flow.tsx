@@ -1,16 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, Check, Clock, User, Loader2 } from "lucide-react"
+import { ArrowLeft, Check, Clock, User, Loader2, Copy, ExternalLink, CheckCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useRealtimeProposal } from "@/hooks/use-realtime-proposal"
-import { useRealtimeWallet } from "@/hooks/use-realtime-wallet"
+import { useWalletData } from "@/hooks/use-wallet-data"
+import { useWalletPublicKey } from "@/hooks/use-wallet-public-key"
 import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
 import { submitSignature, updateProposalStatus } from "@/lib/supabase/proposals"
+import { addSignature, updateProposalStatus as updateLocalProposalStatus } from "@/lib/local-storage"
 import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dapp-kit"
 import { Transaction } from "@mysten/sui/transactions"
 import { fromB64 } from "@mysten/sui/utils"
@@ -26,33 +28,53 @@ interface SimpleSignatureFlowProps {
 export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: SimpleSignatureFlowProps) {
   const [isSigning, setIsSigning] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
+  const [executionSuccessDigest, setExecutionSuccessDigest] = useState<string | null>(null)
+  const [copySuccess, setCopySuccess] = useState<string | null>(null)
   const currentAccount = useCurrentAccount()
   const suiClient = useSuiClient()
   const { mutateAsync: signTransaction } = useSignTransaction()
+  const { formattedPublicKey } = useWalletPublicKey()
   
-  const proposalData = useRealtimeProposal(transactionId)
-  const walletData = walletId 
-    ? useRealtimeWallet(walletId)
-    : { wallet: null }
+  // Use walletData hook that supports both local and Supabase wallets
+  const walletData = walletId ? useWalletData(walletId) : null
+  const { wallet, proposals = [], isLoading: isWalletLoading, error: walletError } = walletData || {}
   
-  const { proposal, isLoading, error } = proposalData
-  const { wallet } = walletData
+  // Find the specific proposal from wallet proposals
+  const proposal = proposals.find(p => p.id === transactionId) || null
+  const isLoading = isWalletLoading
+  const error = walletError
 
   // Calculate signature progress
   const calculateTotalWeight = () => {
     if (!proposal?.signatures || !wallet) return 0
     
-    // For Supabase mode
-    return proposal.signatures.reduce((sum, sig) => sum + (sig.owner?.weight || 0), 0)
+    // Check if this is a local wallet or Supabase wallet
+    const isLocalWallet = walletId?.startsWith('wallet_')
+    
+    if (isLocalWallet) {
+      // For local wallets, find the owner by matching signature's signerPublicKey
+      return proposal.signatures.reduce((sum, sig) => {
+        const owner = wallet.owners.find(o => o.public_key === sig.signerPublicKey)
+        return sum + (owner?.weight || 0)
+      }, 0)
+    } else {
+      // For Supabase mode, owner is already included in signature
+      return proposal.signatures.reduce((sum, sig) => sum + (sig.owner?.weight || 0), 0)
+    }
   }
   
   const totalWeight = calculateTotalWeight()
   const threshold = wallet?.threshold || 2
   const progress = (totalWeight / threshold) * 100
   const canExecute = totalWeight >= threshold
+
   
   // Check if current user has already signed
-  const currentUserOwner = wallet?.owners?.find(o => o.public_key === currentAccount?.address)
+  const currentUserOwner = wallet?.owners?.find(o => 
+    o.public_key === formattedPublicKey ||
+    o.address === currentAccount?.address ||
+    o.public_key === currentAccount?.address
+  )
     
   const hasCurrentUserSigned = proposal?.signatures.some(s => s.owner_id === currentUserOwner?.id)
 
@@ -80,12 +102,23 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
         chain: currentAccount.chains.find(c => c.startsWith('sui:')) || currentAccount.chains[0]
       })
       
-      // Submit the real signature
-      await submitSignature({
-        proposalId: proposal.id,
-        ownerId: currentUserOwner.id,
-        signature: signature
-      })
+      // Check if this is a local wallet or Supabase wallet
+      const isLocalWallet = walletId?.startsWith('wallet_')
+      
+      if (isLocalWallet) {
+        // For local wallets, store signature in localStorage
+        addSignature(proposal.id, formattedPublicKey!, signature)
+        
+        // Trigger a page refresh to show updated data
+        window.location.reload()
+      } else {
+        // Submit to Supabase for cloud wallets
+        await submitSignature({
+          proposalId: proposal.id,
+          ownerId: currentUserOwner.id,
+          signature: signature
+        })
+      }
       
       toast.success("Successfully signed the transaction!")
     } catch (error) {
@@ -130,14 +163,19 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
       })
 
       // Update proposal status
-      await updateProposalStatus(proposal.id, 'executed', digest)
-
-      toast.success(`Transaction executed successfully! Digest: ${digest.slice(0, 10)}...`)
+      const isLocalWallet = walletId?.startsWith('wallet_')
       
-      // Navigate to dashboard after a short delay
-      setTimeout(() => {
-        onNavigate("dashboard")
-      }, 2000)
+      if (isLocalWallet) {
+        // For local wallets, update status in localStorage
+        updateLocalProposalStatus(proposal.id, 'executed', digest)
+      } else {
+        // For Supabase wallets, update in database
+        await updateProposalStatus(proposal.id, 'executed', digest)
+      }
+
+      // Set success state instead of auto-navigating
+      setExecutionSuccessDigest(digest)
+      toast.success(`Transaction executed successfully!`)
     } catch (error) {
       console.error('Error executing transaction:', error)
       toast.error("Failed to execute transaction")
@@ -236,7 +274,12 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
 
           <div className="space-y-3">
             {wallet?.owners.map((owner) => {
-              const signature = proposal.signatures.find(s => s.owner_id === owner.id)
+              // Check if this is a local wallet or Supabase wallet
+              const isLocalWallet = walletId?.startsWith('wallet_')
+              
+              const signature = isLocalWallet 
+                ? proposal.signatures.find(s => s.signerPublicKey === owner.public_key)
+                : proposal.signatures.find(s => s.owner_id === owner.id)
               const isSigned = !!signature
               
               return (
@@ -278,12 +321,12 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
           </div>
 
           <div className="flex gap-3">
-            {proposal.status === 'pending' && (
+            {(proposal.status === 'pending' && !executionSuccessDigest) && (
               <>
                 {!hasCurrentUserSigned && currentUserOwner && (
                   <Button 
                     onClick={handleSign} 
-                    disabled={isSigning || !currentAccount} 
+                    disabled={isSigning || !currentAccount || !!executionSuccessDigest} 
                     className="flex-1"
                   >
                     {isSigning ? "Signing..." : "Sign Transaction"}
@@ -300,22 +343,91 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
                     variant="default" 
                     className="flex-1"
                     onClick={handleExecute}
-                    disabled={isExecuting}
+                    disabled={isExecuting || !!executionSuccessDigest}
                   >
                     {isExecuting ? "Executing..." : "Execute Transaction"}
                   </Button>
                 )}
               </>
             )}
-            {proposal.status === 'executed' && (
+            {(proposal.status === 'executed' || executionSuccessDigest) && (
               <Button disabled className="flex-1">
-                <Check className="h-4 w-4 mr-2" />
+                <CheckCircle className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />
                 Transaction Executed
               </Button>
             )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Success State Display */}
+      {executionSuccessDigest && (
+        <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+              <CardTitle className="text-green-800 dark:text-green-200">Transaction Executed Successfully!</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <div className="text-sm text-green-700 dark:text-green-300 mb-2">Transaction Digest:</div>
+              <div className="bg-white dark:bg-gray-900 border border-green-200 dark:border-green-800 rounded-lg p-3 font-mono text-sm break-all text-gray-900 dark:text-gray-100">
+                {executionSuccessDigest}
+              </div>
+            </div>
+            
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(executionSuccessDigest)
+                  setCopySuccess('Digest copied!')
+                  setTimeout(() => setCopySuccess(null), 2000)
+                }}
+                className="gap-2"
+              >
+                <Copy className="h-4 w-4" />
+                Copy Digest
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="gap-2"
+              >
+                <a 
+                  href={`https://suiscan.xyz/testnet/tx/${executionSuccessDigest}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View on Suiscan
+                </a>
+              </Button>
+              
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => onNavigate("dashboard")}
+              >
+                Return to Dashboard
+              </Button>
+            </div>
+            
+            {copySuccess && (
+              <div className="text-center">
+                <div className="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+                  <Check className="h-4 w-4" />
+                  {copySuccess}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -30,13 +30,41 @@ import { cn } from "@/lib/utils"
 interface VaultSidebarProps {
   activeView: string
   onViewChange: (view: string) => void
+  walletData?: any // Optional wallet data to calculate pending count
 }
 
-export function VaultSidebar({ activeView, onViewChange }: VaultSidebarProps) {
+export function VaultSidebar({ activeView, onViewChange, walletData }: VaultSidebarProps) {
   const { theme, setTheme } = useTheme()
   const { state } = useSidebar()
-  const [pendingCount] = useState(3)
   const [mounted, setMounted] = useState(false)
+
+  // Calculate pending count dynamically from wallet data
+  const calculatePendingCount = () => {
+    if (!walletData?.proposals || !walletData?.wallet) return 0
+    
+    // Count proposals that are pending and need signatures
+    return walletData.proposals.filter((proposal: any) => {
+      if (proposal.status !== 'pending') return false
+      
+      // Calculate current signature weight
+      const totalWeight = proposal.signatures.reduce((sum: number, sig: any) => {
+        // For local wallets, find owner by matching signerPublicKey
+        const isLocalWallet = walletData.wallet.id?.startsWith('wallet_')
+        if (isLocalWallet) {
+          const owner = walletData.wallet.owners.find((o: any) => o.public_key === sig.signerPublicKey)
+          return sum + (owner?.weight || 0)
+        } else {
+          // For Supabase wallets, owner is included in signature
+          return sum + (sig.owner?.weight || 0)
+        }
+      }, 0)
+      
+      // Return true if transaction needs more signatures
+      return totalWeight < walletData.wallet.threshold
+    }).length
+  }
+
+  const pendingCount = calculatePendingCount()
   const router = useRouter()
 
   useEffect(() => {
@@ -66,7 +94,7 @@ export function VaultSidebar({ activeView, onViewChange }: VaultSidebarProps) {
       title: "Pending Signatures",
       icon: FileText,
       id: "signatures",
-      badge: pendingCount,
+      badge: pendingCount > 0 ? pendingCount : undefined, // Only show badge if there are pending signatures
       description: "Transactions awaiting your signature",
     },
   ]

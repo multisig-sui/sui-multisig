@@ -87,7 +87,7 @@ export default function WalletPage({ params }: { params: Promise<{ id: string }>
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full bg-background">
-        <VaultSidebar activeView={activeView} onViewChange={setActiveView} />
+        <VaultSidebar activeView={activeView} onViewChange={setActiveView} walletData={walletData} />
         <div className="flex-1 flex flex-col">
           <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border px-4 md:px-6">
             <SidebarTrigger className="-ml-1" />

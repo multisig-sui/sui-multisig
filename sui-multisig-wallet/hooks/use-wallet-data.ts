@@ -38,13 +38,26 @@ export function useWalletData(walletId: string) {
           status: p.status,
           created_at: p.createdAt,
           executed_digest: p.executedDigest,
-          signatures: p.signatures.map(s => ({
-            id: s.id,
-            proposal_id: p.id,
-            owner_id: null,
-            signature: s.signature,
-            signed_at: s.createdAt
-          }))
+          signatures: p.signatures.map(s => {
+            // Find the owner by matching public key
+            const owner = wallet.signers.find(signer => signer.publicKey === s.signerPublicKey)
+            const ownerIndex = wallet.signers.findIndex(signer => signer.publicKey === s.signerPublicKey)
+            return {
+              id: s.id,
+              proposal_id: p.id,
+              owner_id: owner ? `${wallet.id}-${ownerIndex}` : null,
+              signature: s.signature,
+              signed_at: s.createdAt,
+              signerPublicKey: s.signerPublicKey, // Preserve for local wallet matching
+              owner: owner ? {
+                id: `${wallet.id}-${ownerIndex}`,
+                name: owner.name || `Signer ${ownerIndex + 1}`,
+                weight: owner.weight,
+                public_key: owner.publicKey,
+                type: owner.keyScheme
+              } : null
+            }
+          })
         })),
         isLoading: false,
         error: null
