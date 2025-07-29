@@ -11,7 +11,7 @@ import { Copy, Info, Key } from 'lucide-react'
 import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519'
 import { Secp256k1PublicKey } from '@mysten/sui/keypairs/secp256k1'
 import { Secp256r1PublicKey } from '@mysten/sui/keypairs/secp256r1'
-import { fromHEX, toBase64 } from '@mysten/bcs'
+import { fromHEX, toBase64 } from '@mysten/sui/utils'
 import { toast } from 'sonner'
 
 // Example test keys for demonstration
