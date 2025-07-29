@@ -100,7 +100,7 @@ export function TransactionProposal({ walletId, multisigAddress, onComplete }: T
 
     // Check if current user is a wallet owner
     // Need to compare with formatted public key (base64 with flag byte)
-    const currentUserOwner = wallet?.owners?.find(o => 
+    const currentUserOwner = wallet?.owners?.find((o: any) => 
       o.public_key === formattedPublicKey ||
       o.address === currentAccount.address ||
       o.public_key === currentAccount.address
@@ -109,7 +109,7 @@ export function TransactionProposal({ walletId, multisigAddress, onComplete }: T
     if (!currentUserOwner && wallet?.owners && wallet.owners.length > 0) {
       console.log('Current account address:', currentAccount.address)
       console.log('Current formatted public key:', formattedPublicKey)
-      console.log('Wallet owners:', wallet.owners.map(o => ({ name: o.name, public_key: o.public_key, address: o.address, type: o.type })))
+      console.log('Wallet owners:', wallet.owners.map((o: any) => ({ name: o.name, public_key: o.public_key, address: o.address, type: o.type })))
       toast.error("You are not authorized to create proposals for this wallet. Please connect with a signer wallet.")
       return
     }

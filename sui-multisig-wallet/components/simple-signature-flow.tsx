@@ -40,7 +40,7 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
   const { wallet, proposals = [], isLoading: isWalletLoading, error: walletError } = walletData || {}
   
   // Find the specific proposal from wallet proposals
-  const proposal = proposals.find(p => p.id === transactionId) || null
+  const proposal = proposals.find((p: any) => p.id === transactionId) || null
   const isLoading = isWalletLoading
   const error = walletError
 
@@ -53,13 +53,13 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
     
     if (isLocalWallet) {
       // For local wallets, find the owner by matching signature's signerPublicKey
-      return proposal.signatures.reduce((sum, sig) => {
-        const owner = wallet.owners.find(o => o.public_key === sig.signerPublicKey)
+      return proposal.signatures.reduce((sum: number, sig: any) => {
+        const owner = wallet.owners.find((o: any) => o.public_key === sig.signerPublicKey)
         return sum + (owner?.weight || 0)
       }, 0)
     } else {
       // For Supabase mode, owner is already included in signature
-      return proposal.signatures.reduce((sum, sig) => sum + (sig.owner?.weight || 0), 0)
+      return proposal.signatures.reduce((sum: number, sig: any) => sum + (sig.owner?.weight || 0), 0)
     }
   }
   
@@ -70,13 +70,13 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
 
   
   // Check if current user has already signed
-  const currentUserOwner = wallet?.owners?.find(o => 
+  const currentUserOwner = wallet?.owners?.find((o: any) => 
     o.public_key === formattedPublicKey ||
     o.address === currentAccount?.address ||
     o.public_key === currentAccount?.address
   )
     
-  const hasCurrentUserSigned = proposal?.signatures.some(s => s.owner_id === currentUserOwner?.id)
+  const hasCurrentUserSigned = proposal?.signatures.some((s: any) => s.owner_id === currentUserOwner?.id)
 
   const handleSign = async () => {
     if (!walletId || !currentAccount || !currentUserOwner || !proposal) {
@@ -139,7 +139,7 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
 
     try {
       // Build the MultiSigPublicKey from wallet owners
-      const parsedPublicKeys = wallet.owners.map(owner => ({
+      const parsedPublicKeys = wallet.owners.map((owner: any) => ({
         publicKey: parseSuiPublicKey(owner.public_key, (owner.metadata as any)?.originalKeyScheme || owner.type),
         weight: owner.weight
       }))
@@ -150,7 +150,7 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
       })
 
       // Collect all signatures
-      const signatures = proposal.signatures.map(sig => sig.signature)
+      const signatures = proposal.signatures.map((sig: any) => sig.signature)
 
       // Combine signatures
       const combinedSignature = multiSigPublicKey.combinePartialSignatures(signatures)
@@ -273,13 +273,13 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
           </div>
 
           <div className="space-y-3">
-            {wallet?.owners.map((owner) => {
+            {wallet?.owners.map((owner: any) => {
               // Check if this is a local wallet or Supabase wallet
               const isLocalWallet = walletId?.startsWith('wallet_')
               
               const signature = isLocalWallet 
-                ? proposal.signatures.find(s => s.signerPublicKey === owner.public_key)
-                : proposal.signatures.find(s => s.owner_id === owner.id)
+                ? proposal.signatures.find((s: any) => s.signerPublicKey === owner.public_key)
+                : proposal.signatures.find((s: any) => s.owner_id === owner.id)
               const isSigned = !!signature
               
               return (

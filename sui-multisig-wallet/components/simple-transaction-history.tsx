@@ -26,7 +26,7 @@ export function SimpleTransactionHistory({ walletId, onViewTransaction }: Simple
   const walletData = walletId ? useWalletData(walletId) : null
   const { proposals = [], wallet = null, isLoading = false } = walletData || {}
 
-  const filteredProposals = proposals.filter((proposal) => {
+  const filteredProposals = proposals.filter((proposal: any) => {
     const matchesSearch =
       proposal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       proposal.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -153,8 +153,8 @@ export function SimpleTransactionHistory({ walletId, onViewTransaction }: Simple
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredProposals.map((proposal) => {
-                const totalWeight = proposal.signatures.reduce((sum, sig) => sum + (sig.owner?.weight || 0), 0)
+              {filteredProposals.map((proposal: any) => {
+                const totalWeight = proposal.signatures.reduce((sum: number, sig: any) => sum + (sig.owner?.weight || 0), 0)
                 const threshold = wallet?.threshold || 2
                 
                 return (
