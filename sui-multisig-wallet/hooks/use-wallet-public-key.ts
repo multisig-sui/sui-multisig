@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useCurrentAccount } from '@mysten/dapp-kit'
-import { toB64 } from '@mysten/bcs'
+import { toBase64 } from '@mysten/sui/utils'
 import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519'
 import { Secp256k1PublicKey } from '@mysten/sui/keypairs/secp256k1'
 import { Secp256r1PublicKey } from '@mysten/sui/keypairs/secp256r1'
@@ -105,7 +105,7 @@ export function useWalletPublicKey(): WalletPublicKeyResult {
         
         const derivedAddress = publicKeyInstance.toSuiAddress()
         
-        setFormattedPublicKey(toB64(pkWithFlag))
+        setFormattedPublicKey(toBase64(pkWithFlag))
         setKeyScheme(suiKeyScheme)
         setAddress(derivedAddress)
         setIsLoading(false)

@@ -15,7 +15,7 @@ import { createProposal } from "@/lib/supabase/proposals"
 import { toast } from "sonner"
 import { useCurrentAccount, useSuiClient } from "@mysten/dapp-kit"
 import { Transaction } from "@mysten/sui/transactions"
-import { toB64, MIST_PER_SUI } from "@mysten/sui/utils"
+import { toBase64, MIST_PER_SUI } from "@mysten/sui/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { useWalletData } from "@/hooks/use-wallet-data"
@@ -151,7 +151,7 @@ export function TransactionProposal({ walletId, multisigAddress, onComplete }: T
         
         // Build transaction bytes
         const txBytes = await tx.build({ client: suiClient })
-        txBytesBase64 = toB64(txBytes)
+        txBytesBase64 = toBase64(txBytes)
         
         // Set raw data for preview
         setRawTransactionData(JSON.stringify({

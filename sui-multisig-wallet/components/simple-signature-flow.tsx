@@ -15,7 +15,7 @@ import { submitSignature, updateProposalStatus } from "@/lib/supabase/proposals"
 import { addSignature, updateProposalStatus as updateLocalProposalStatus } from "@/lib/local-storage"
 import { useCurrentAccount, useSignTransaction, useSuiClient } from "@mysten/dapp-kit"
 import { Transaction } from "@mysten/sui/transactions"
-import { fromB64 } from "@mysten/sui/utils"
+import { fromBase64 } from "@mysten/sui/utils"
 import { MultiSigPublicKey } from "@mysten/sui/multisig"
 import { parseSuiPublicKey } from "@/lib/sui-utils"
 
@@ -93,7 +93,7 @@ export function SimpleSignatureFlow({ transactionId, walletId, onNavigate }: Sim
     
     try {
       // Parse the transaction bytes from base64
-      const txBytes = fromB64(proposal.tx_bytes)
+      const txBytes = fromBase64(proposal.tx_bytes)
       
       // Sign the transaction with the connected wallet
       const { signature } = await signTransaction({
