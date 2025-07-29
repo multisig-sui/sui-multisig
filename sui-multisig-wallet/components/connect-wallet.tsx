@@ -4,7 +4,8 @@ import { ConnectButton, useCurrentAccount, useSuiClient } from "@mysten/dapp-kit
 import { Button } from "@/components/ui/button"
 import { useEffect, useState, useCallback } from "react"
 import { CoinBalance } from "@mysten/sui/client"
-import { Copy, Check, RefreshCw, Wallet, Users } from "lucide-react"
+import { Copy, Check, RefreshCw, Wallet, Users, Lock } from "lucide-react"
+import { ZkLoginWallet } from "./zklogin-wallet"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,13 +35,15 @@ export function ConnectWallet() {
   const [isLoadingWalletBalance, setIsLoadingWalletBalance] = useState<boolean>(false);
   const [multisigWallets, setMultisigWallets] = useState<MultisigWallet[]>([]);
   const [isLoadingMultisigs, setIsLoadingMultisigs] = useState<boolean>(false);
+  const [zkLoginAddress, setZkLoginAddress] = useState<string | null>(null);
+  const [zkLoginSession, setZkLoginSession] = useState<any>(null);
   const router = useRouter();
 
   const formatBalance = (totalBalance: string) => {
     const balanceInMist = BigInt(totalBalance);
-    return (Number(balanceInMist) / MIST_PER_SUI).toLocaleString(undefined, { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 4 
+    return (Number(balanceInMist) / MIST_PER_SUI).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4
     });
   };
 
@@ -72,7 +75,7 @@ export function ConnectWallet() {
         .from('wallets')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       setMultisigWallets(data || []);
     } catch (error) {
@@ -132,25 +135,41 @@ export function ConnectWallet() {
     }
   };
 
+  const handleZkLoginConnected = (address: string, session: any) => {
+    setZkLoginAddress(address);
+    setZkLoginSession(session);
+  };
+
+  const handleZkLoginDisconnect = () => {
+    setZkLoginAddress(null);
+    setZkLoginSession(null);
+  };
+
   // Override the default ConnectButton with our custom dropdown
-  if (currentAccount) {
+  if (currentAccount || zkLoginAddress) {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="gap-2">
             <Wallet className="h-4 w-4" />
-            <span className="hidden sm:inline-block">
-              {currentAccount.address.slice(0, 6)}...{currentAccount.address.slice(-4)}
+                        <span className="hidden sm:inline-block">
+              {zkLoginAddress ?
+                `zkLogin: ${zkLoginAddress.slice(0, 6)}...${zkLoginAddress.slice(-4)}` :
+                currentAccount ? `${currentAccount.address.slice(0, 6)}...${currentAccount.address.slice(-4)}` : ''
+              }
             </span>
             <span className="sm:hidden">
-              {currentAccount.address.slice(0, 4)}...
+              {zkLoginAddress ?
+                `zkLogin: ${zkLoginAddress.slice(0, 4)}...` :
+                currentAccount ? `${currentAccount.address.slice(0, 4)}...` : ''
+              }
             </span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-80">
           <DropdownMenuLabel>Wallet Details</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          
+
           {/* Balance */}
           <DropdownMenuItem className="flex-col items-start gap-1">
             <div className="flex items-center justify-between w-full">
@@ -163,9 +182,9 @@ export function ConnectWallet() {
                 ) : (
                   <span className="text-sm text-muted-foreground">Error</span>
                 )}
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
+                <Button
+                  size="icon"
+                  variant="ghost"
                   className="h-6 w-6"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -180,22 +199,24 @@ export function ConnectWallet() {
           </DropdownMenuItem>
 
           {/* Address */}
-          <DropdownMenuItem 
-            className="flex-col items-start gap-1 cursor-pointer"
-            onClick={handleCopyAddress}
-          >
-            <span className="text-sm font-medium">Address</span>
-            <div className="flex items-center gap-2 w-full">
-              <code className="text-xs bg-muted px-2 py-1 rounded flex-1 truncate">
-                {currentAccount.address}
-              </code>
-              {copySuccess ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-            </div>
-          </DropdownMenuItem>
+          {currentAccount && (
+            <DropdownMenuItem
+              className="flex-col items-start gap-1 cursor-pointer"
+              onClick={handleCopyAddress}
+            >
+              <span className="text-sm font-medium">Address</span>
+              <div className="flex items-center gap-2 w-full">
+                <code className="text-xs bg-muted px-2 py-1 rounded flex-1 truncate">
+                  {currentAccount.address}
+                </code>
+                {copySuccess ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              </div>
+            </DropdownMenuItem>
+          )}
 
           {/* Public Key */}
           {formattedPublicKey && (
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="flex-col items-start gap-1 cursor-pointer"
               onClick={handleCopyPublicKey}
             >
@@ -251,10 +272,21 @@ export function ConnectWallet() {
               <DropdownMenuSeparator />
             </>
           )}
-          
+
+          {/* zkLogin Wallet */}
+          <DropdownMenuSeparator />
+          <div className="p-2">
+            <ZkLoginWallet
+              onZkLoginConnected={handleZkLoginConnected}
+              onDisconnect={handleZkLoginDisconnect}
+              isConnected={!!zkLoginAddress}
+              zkLoginAddress={zkLoginAddress || undefined}
+            />
+          </div>
+
           {/* Disconnect using ConnectButton */}
           <div className="p-2">
-            <ConnectButton 
+            <ConnectButton
               connectText="Switch Wallet"
               style={{
                 width: '100%',
@@ -266,5 +298,15 @@ export function ConnectWallet() {
     );
   }
 
-  return <ConnectButton />;
+  return (
+    <div className="flex gap-2">
+      <ConnectButton />
+      <ZkLoginWallet
+        onZkLoginConnected={handleZkLoginConnected}
+        onDisconnect={handleZkLoginDisconnect}
+        isConnected={!!zkLoginAddress}
+        zkLoginAddress={zkLoginAddress || undefined}
+      />
+    </div>
+  );
 }
